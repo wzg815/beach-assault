@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0b0d10">
+<link rel="icon" href="data:,">
+<title>抢滩登陆 · 黎明防线</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+html,body{margin:0;height:100%;overflow:hidden;background:#07090b;color:#e9e4d8;font-family:"PingFang SC","Microsoft YaHei","Noto Sans CJK SC",system-ui,sans-serif;touch-action:none;overscroll-behavior:none}
+canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+.hide{display:none!important}
+#boot{position:fixed;inset:0;background:radial-gradient(ellipse at 50% 60%,#1b1f22 0%,#07090b 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:50;transition:opacity .8s}
+#boot.done{opacity:0;pointer-events:none}
+#boot h1{font-size:clamp(34px,7vw,72px);letter-spacing:.18em;margin:0 0 6px;font-weight:900;color:#efe6d2;text-shadow:0 4px 30px rgba(255,140,40,.25)}
+#boot .sub{letter-spacing:.5em;color:#a69c88;font-size:clamp(11px,1.6vw,15px);margin-bottom:38px}
+#bar{width:min(520px,70vw);height:6px;background:#222;border-radius:3px;overflow:hidden}
+#bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#b8862f,#f3c35a);transition:width .2s}
+#bootmsg{margin-top:12px;font-size:13px;color:#8d8576;letter-spacing:.1em}
+#ui{position:fixed;inset:0;pointer-events:none;z-index:10}
+.panel{pointer-events:auto}
+/* menu */
+#menu{position:fixed;inset:0;display:flex;flex-direction:column;justify-content:center;padding-left:max(7vw,env(safe-area-inset-left));background:linear-gradient(90deg,rgba(5,6,8,.82) 0%,rgba(5,6,8,.45) 38%,rgba(5,6,8,0) 62%);z-index:20}
+#menu h1{margin:0;font-size:clamp(36px,7.2vw,86px);font-weight:900;letter-spacing:.12em;line-height:1;color:#f1e8d4;text-shadow:0 6px 40px rgba(0,0,0,.6)}
+#menu h2{margin:10px 0 4px;font-size:clamp(13px,2vw,20px);letter-spacing:.6em;color:#d9a94d;font-weight:600}
+#menu .tag{color:#a59b88;font-size:clamp(11px,1.4vw,14px);margin-bottom:clamp(14px,3.5vh,34px);letter-spacing:.08em;max-width:520px;line-height:1.6}
+.btn{display:block;min-width:min(300px,42vw);text-align:left;margin:6px 0;padding:clamp(9px,1.8vh,14px) 22px;font-size:clamp(15px,2.2vw,20px);letter-spacing:.2em;color:#efe6d2;background:rgba(20,22,24,.55);border:1px solid rgba(239,230,210,.18);border-left:3px solid #d9a94d;cursor:pointer;font-family:inherit;transition:background .15s,transform .15s}
+.btn:hover,.btn:active{background:rgba(217,169,77,.22);transform:translateX(4px)}
+.btn.pri{background:linear-gradient(90deg,rgba(217,169,77,.85),rgba(217,169,77,.35));color:#160f04;font-weight:800}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.chip{padding:7px 14px;border:1px solid rgba(239,230,210,.25);background:rgba(20,22,24,.5);color:#d8d0bf;font-size:14px;cursor:pointer;letter-spacing:.1em;font-family:inherit}
+.chip.on{background:#d9a94d;color:#140e04;border-color:#d9a94d;font-weight:700}
+#best{margin-top:14px;font-size:13px;color:#a59b88;letter-spacing:.08em}
+.modal{position:fixed;inset:0;background:rgba(4,5,6,.78);display:flex;align-items:center;justify-content:center;z-index:30;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.card{background:rgba(18,20,22,.96);border:1px solid rgba(239,230,210,.14);border-top:3px solid #d9a94d;padding:clamp(16px,3vh,28px) clamp(18px,3vw,34px);width:min(620px,92vw);max-height:90vh;overflow:auto;pointer-events:auto}
+.card h3{margin:0 0 14px;letter-spacing:.25em;font-size:20px;color:#f1e8d4}
+.card p,.card li{color:#c9c1b0;font-size:14px;line-height:1.75}
+.set{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0;font-size:15px}
+.set input[type=range]{width:46%;accent-color:#d9a94d}
+.card .btn{min-width:0;display:inline-block;margin-right:8px}
+#credits a{color:#d9a94d}
+/* hud */
+#hud{position:fixed;inset:0;pointer-events:none}
+#tl{position:absolute;left:max(18px,env(safe-area-inset-left));top:14px;font-size:14px;letter-spacing:.12em;text-shadow:0 1px 3px #000}
+#tl b{font-size:22px;color:#f3c35a}
+#tr{position:absolute;right:max(18px,env(safe-area-inset-right));top:14px;text-align:right;text-shadow:0 1px 3px #000;letter-spacing:.1em}
+#score{font-size:26px;font-weight:800;color:#f1e8d4}
+#combo{font-size:13px;color:#f3c35a;height:18px}
+#base{position:absolute;left:50%;transform:translateX(-50%);top:14px;width:min(360px,40vw);text-align:center;font-size:12px;letter-spacing:.2em;text-shadow:0 1px 3px #000}
+#basebar{height:7px;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.2);margin-top:4px}
+#basebar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#9e2a1e,#d9a94d 50%,#7fb069);background-size:360px 100%;transition:width .3s}
+#wpn{position:absolute;right:max(18px,env(safe-area-inset-right));bottom:16px;text-align:right;text-shadow:0 1px 3px #000}
+#wname{font-size:18px;letter-spacing:.15em;font-weight:700}
+#wstat{font-size:12px;color:#bdb4a3;letter-spacing:.1em;margin-top:2px}
+#heat{width:180px;height:6px;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.2);margin:6px 0 0 auto}
+#heat i{display:block;height:100%;width:0;background:#d9a94d}
+#heat.hot i{background:#e2442f}
+#wlist{display:flex;gap:6px;justify-content:flex-end;margin-top:8px}
+#wlist span{font-size:12px;padding:3px 8px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.35);color:#bbb}
+#wlist span.on{border-color:#d9a94d;color:#140e04;background:#d9a94d;font-weight:700}
+#xh{position:absolute;left:50%;top:50%;width:0;height:0}
+#xh .c{position:absolute;left:-1.5px;top:-1.5px;width:3px;height:3px;background:#fff;border-radius:50%;box-shadow:0 0 3px #000}
+#xh .l{position:absolute;background:rgba(255,255,255,.85);box-shadow:0 0 2px #000}
+#hit{position:absolute;left:50%;top:50%;width:26px;height:26px;margin:-13px 0 0 -13px;opacity:0;transition:opacity .15s}
+#hit:before,#hit:after{content:"";position:absolute;left:50%;top:-4px;bottom:-4px;width:2px;margin-left:-1px;background:#fff;transform:rotate(45deg)}
+#hit:after{transform:rotate(-45deg)}
+#hit.k:before,#hit.k:after{background:#ff4a3a}
+#range{position:absolute;left:50%;top:calc(50% + 40px);transform:translateX(-50%);font-size:12px;letter-spacing:.1em;color:#d9e6c4;text-shadow:0 1px 2px #000}
+#lock{position:absolute;width:64px;height:64px;margin:-32px 0 0 -32px;border:2px solid #f3c35a;display:none}
+#lock.ok{border-color:#ff3b2f;animation:lk .25s infinite alternate}
+@keyframes lk{to{transform:scale(.85)}}
+#scope{position:absolute;inset:0;opacity:0;transition:opacity .2s;background:radial-gradient(circle at 50% 50%,transparent 0,transparent 34vmin,rgba(0,0,0,.92) 36vmin)}
+#scope.on{opacity:1}
+#scope:after{content:"";position:absolute;left:50%;top:50%;width:64vmin;height:64vmin;margin:-32vmin;border-radius:50%;background:linear-gradient(transparent 49.85%,rgba(0,0,0,.6) 49.85%,rgba(0,0,0,.6) 50.15%,transparent 50.15%),linear-gradient(90deg,transparent 49.85%,rgba(0,0,0,.6) 49.85%,rgba(0,0,0,.6) 50.15%,transparent 50.15%)}
+#dmg{position:absolute;inset:0;opacity:0;background:radial-gradient(ellipse at center,transparent 45%,rgba(140,10,0,.55) 100%)}
+#msg{position:absolute;left:50%;top:26%;transform:translateX(-50%);text-align:center;font-size:clamp(22px,4vw,44px);font-weight:900;letter-spacing:.3em;text-shadow:0 3px 20px #000;opacity:0;transition:opacity .4s;white-space:nowrap}
+#msg small{display:block;font-size:.4em;letter-spacing:.3em;font-weight:500;color:#d9a94d;margin-top:8px}
+#feed{position:absolute;right:max(18px,env(safe-area-inset-right));top:90px;font-size:12px;text-align:right;text-shadow:0 1px 2px #000;line-height:1.7}
+#warn{position:absolute;left:50%;top:62px;transform:translateX(-50%);color:#ff6a4d;font-size:13px;letter-spacing:.2em;text-shadow:0 1px 2px #000}
+#fps{position:absolute;left:8px;bottom:6px;font-size:11px;color:#8f8;text-shadow:0 1px 2px #000}
+#pausebtn{position:absolute;top:10px;right:max(150px,calc(env(safe-area-inset-right) + 150px));width:40px;height:40px;border:1px solid rgba(255,255,255,.3);background:rgba(0,0,0,.35);color:#fff;font-size:16px;pointer-events:auto;display:none}
+/* touch */
+#touch{position:absolute;inset:0;display:none;pointer-events:none}
+.tb{position:absolute;pointer-events:auto;border-radius:50%;background:rgba(20,22,24,.38);border:2px solid rgba(239,230,210,.35);color:#efe6d2;display:flex;align-items:center;justify-content:center;font-weight:800;letter-spacing:.05em;text-shadow:0 1px 2px #000;backdrop-filter:blur(2px)}
+.tb.on{background:rgba(217,169,77,.55);border-color:#f3c35a}
+#tfire{width:96px;height:96px;right:calc(max(26px,env(safe-area-inset-right)) + 10px);bottom:30px;font-size:18px;background:rgba(160,40,30,.35)}
+#tfire2{width:74px;height:74px;left:calc(max(22px,env(safe-area-inset-left)) + 4px);bottom:34px;font-size:15px;background:rgba(160,40,30,.3)}
+#tzoom{width:56px;height:56px;right:calc(max(26px,env(safe-area-inset-right)) + 122px);bottom:40px;font-size:13px}
+.tw{width:58px;height:44px;border-radius:8px;font-size:13px;left:calc(max(18px,env(safe-area-inset-left)) + 4px)}
+#tw0{bottom:200px}#tw1{bottom:150px}#tw2{bottom:250px}
+#tpause{width:42px;height:42px;border-radius:8px;right:calc(max(18px,env(safe-area-inset-right)) + 160px);top:10px;font-size:14px}
+body.touch #touch{display:block}
+body.touch #wpn{bottom:140px}
+body.touch #wlist{display:none}
+#rot{position:fixed;inset:0;background:#07090b;z-index:60;display:none;align-items:center;justify-content:center;flex-direction:column;font-size:18px;letter-spacing:.2em;color:#d8d0bf}
+#rot .ph{width:46px;height:78px;border:3px solid #d9a94d;border-radius:8px;margin-bottom:20px;animation:rt 1.6s infinite}
+@keyframes rt{50%{transform:rotate(-90deg)}}
+@media (orientation:portrait) and (pointer:coarse){#rot.need{display:flex}}
+/* summary */
+#sum .big{font-size:56px;font-weight:900;color:#f3c35a;letter-spacing:.1em;text-align:center}
+.grid{display:grid;grid-template-columns:1fr auto;gap:4px 18px;font-size:15px;margin:10px 0 16px}
+.grid span:nth-child(2n){text-align:right;color:#f1e8d4;font-weight:700}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="boot"><h1>抢滩登陆</h1><div class="sub">黎 明 防 线</div><div id="bar"><i></i></div><div id="bootmsg">正在加载 0%</div></div>
+<div id="rot"><div class="ph"></div>请将手机横过来</div>
+<div id="hud" class="hide">
+  <div id="tl">第 <b id="wave">1</b> 波 <span id="wavemax">/ 10</span><div id="left" style="font-size:12px;color:#bdb4a3;margin-top:3px"></div></div>
+  <div id="base">海岸防线 <span id="basev">100%</span><div id="basebar"><i></i></div></div>
+  <div id="tr"><div id="score">0</div><div id="combo"></div></div>
+  <div id="warn"></div>
+  <div id="feed"></div>
+  <div id="scope"></div>
+  <div id="xh"><div class="c"></div></div>
+  <div id="hit"></div><div id="range"></div><div id="lock"></div>
+  <div id="wpn"><div id="wname">重机枪</div><div id="wstat"></div><div id="heat"><i></i></div><div id="wlist"><span data-w="0">1 重机枪</span><span data-w="1">2 榴弹炮</span><span data-w="2">3 防空导弹</span></div></div>
+  <div id="dmg"></div>
+  <div id="msg"></div>
+  <div id="fps"></div>
+  <div id="touch">
+    <div class="tb tw" id="tw0" data-w="0">机枪</div><div class="tb tw" id="tw1" data-w="1">火炮</div><div class="tb tw" id="tw2" data-w="2">导弹</div>
+    <div class="tb" id="tzoom">瞄准</div><div class="tb" id="tfire">开火</div><div class="tb" id="tfire2">开火</div>
+    <div class="tb tw" id="tpause">II</div>
+  </div>
+</div>
+<div id="menu" class="hide panel">
+  <h1>抢滩登陆</h1><h2>黎明防线</h2>
+  <div class="tag">黎明，敌军舰队压向海岸。你坚守沙丘上的最后一座火力点：重机枪扫射登陆部队，榴弹炮轰击登陆艇和坦克，防空导弹击落直升机与战机。守住 10 波进攻。</div>
+  <button class="btn pri" id="bstart">开始战斗</button>
+  <div class="row" id="diff" style="margin:6px 0 4px"><span class="chip" data-d="0">新兵</span><span class="chip on" data-d="1">老兵</span><span class="chip" data-d="2">精英</span></div>
+  <button class="btn" id="bset">设置</button>
+  <button class="btn" id="bhelp">操作说明</button>
+  <button class="btn" id="bcred">素材鸣谢</button>
+  <div id="best"></div>
+</div>
+<div id="mset" class="modal hide"><div class="card">
+  <h3>设置</h3>
+  <div class="set">画质<div class="row" id="sq"><span class="chip" data-q="high">高</span><span class="chip" data-q="mid">中</span><span class="chip" data-q="low">流畅</span></div></div>
+  <div class="set">血腥效果<div class="row" id="sg"><span class="chip" data-g="1">开</span><span class="chip" data-g="0">关</span></div></div>
+  <div class="set">音量<input type="range" id="svol" min="0" max="100"></div>
+  <div class="set">视角灵敏度<input type="range" id="ssens" min="20" max="250"></div>
+  <div class="set">显示帧率<div class="row" id="sf"><span class="chip" data-f="1">开</span><span class="chip" data-f="0">关</span></div></div>
+  <p style="font-size:12px;color:#8d8576">画质切换后立即生效；手机建议「流畅」或「中」。</p>
+  <button class="btn" data-close>返回</button>
+</div></div>
+<div id="mhelp" class="modal hide"><div class="card">
+  <h3>操作说明</h3>
+  <ul>
+    <li><b>电脑：</b>鼠标瞄准（点击画面锁定鼠标），左键开火，右键望远镜/瞄准镜，1 / 2 / 3 或滚轮切换武器，Esc 暂停。</li>
+    <li><b>手机（横屏）：</b>右半边屏幕滑动瞄准，按住「开火」射击（按住开火键滑动也能边打边瞄），「瞄准」开镜，左侧切换武器。</li>
+    <li><b>重机枪：</b>射速快，克制步兵和快艇；连续射击会过热，过热后需冷却。</li>
+    <li><b>榴弹炮：</b>瞄准点就是落点，炮弹有飞行时间，打移动目标要提前量；大范围爆炸，克制登陆艇、坦克和人群。</li>
+    <li><b>防空导弹：</b>准星靠近飞机时自动锁定（红框），开火后追踪；没有锁定时直线飞向准星。</li>
+    <li>敌人冲上沙丘或用坦克、直升机、战机攻击会削弱「海岸防线」，归零即失败。每波结束会抢修一部分防线。</li>
+  </ul>
+  <button class="btn" data-close>返回</button>
+</div></div>
+<div id="mcred" class="modal hide"><div class="card" id="credits">
+  <h3>素材鸣谢</h3>
+  <p>3D 模型、PBR 材质：<a href="https://tevy.dev" target="_blank" rel="noopener">tevy.dev</a>（CC0 公共领域）——主战坦克、履带步兵战车、硬壳充气艇、轻型直升机、通用直升机、双旋翼运输直升机、三角翼战斗机、螺旋桨战斗机、牵引榴弹炮、沙袋工事、蛇腹铁丝网、木质沙袋掩体、哨塔、伪装网、防爆墙、弹药箱、礁石、海蚀柱、悬崖、灯塔、沉船、烧毁卡车、军用越野车、碎石堆、突击步枪、步兵人物（含动画）；沙滩、湿沙、草地、混凝土、花岗岩、锈蚀钢板材质。</p>
+  <p>天空 HDRI：Belfast Sunset (Pure Sky)，<a href="https://polyhaven.com/a/belfast_sunset_puresky" target="_blank" rel="noopener">Poly Haven</a>（CC0）。海面法线贴图：three.js 示例素材（MIT）。</p>
+  <p>渲染引擎：<a href="https://threejs.org" target="_blank" rel="noopener">three.js</a>（MIT）。爆炸、烟雾、水花、血迹等特效贴图与全部音效为程序生成。登陆艇、反坦克拒马、机枪模型为程序建模。</p>
+  <button class="btn" data-close>返回</button>
+</div></div>
+<div id="mpause" class="modal hide"><div class="card">
+  <h3>暂停</h3>
+  <button class="btn pri" id="bresume">继续战斗</button>
+  <button class="btn" id="bpset">设置</button>
+  <button class="btn" id="bquit">退出到主菜单</button>
+</div></div>
+<div id="sum" class="modal hide"><div class="card">
+  <h3 id="sumt">第 1 波 完成</h3>
+  <div class="big" id="sumr"></div>
+  <div class="grid" id="sumg"></div>
+  <button class="btn pri" id="bnext">下一波</button>
+  <button class="btn" id="bmenu">返回主菜单</button>
+</div></div>
+<script src="__JS__"></script>
+</body>
+</html>
