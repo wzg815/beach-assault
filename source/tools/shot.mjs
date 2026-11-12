@@ -120,6 +120,22 @@ const scripts = {
     await T(() => { const ss = __T.enemies.list.filter(e => e.type === 'soldier' && e.alive && e.state !== 'boat'); ss.forEach((s, i) => { s.state = i % 3 === 2 ? 'advance' : 'cover'; s.hold = 99; s.crawl = i % 3 === 0; s.goal.set(s.obj.position.x, 0, -20); s.obj.position.set(-5 + (i % 5) * 2.5, 0, -36 - Math.floor(i / 5) * 3); }); });
     await T(() => __T.step(1.2)); await T(() => { __T.cam(-3, 2.2, -54); __T.aim(Math.PI - 0.15, -0.08); }); await sleep(1500); await shot('pose');
   },
+  async hands() {
+    await T(() => { __T.start(1); __T.god(); __T.endWave(); __T.aim(0.0, -0.06); }); await sleep(1500);
+    const V = JSON.parse(process.env.POSES || '[{}]');
+    for (let i = 0; i < V.length; i++) {
+      await T((p) => { const g = __T.weapons.mg.g; g.userData.pose(Object.assign({ roll: 1.25, pitch: 0.25, yaw: 0, curl: 1.0, thumb: 0.4, tx: 0, ty: -0.035, tz: 0.075 }, p)); }, V[i]);
+      await sleep(700); await page.screenshot({ path: `shots/hands_${i}.png`, clip: { x: 340, y: 400, width: 600, height: 320 }, timeout: 180000 }); console.log('hands', i, JSON.stringify(V[i]));
+    }
+  },
+  async open() {
+    await T(() => { __T.start(1); __T.god(); });
+    await T((n) => __T.step(n), +(process.env.STEP || 5)); await T(() => __T.aim(0.03, -0.1)); await sleep(1500); await shot('o_open');
+    console.log(JSON.stringify(await T(() => __T.state())));
+    await T(() => { __T.fire(true); __T.weapons.heat = 0.75; }); await sleep(2500); await T(() => __T.step(0.5)); await T(() => { __T.weapons.heat = 0.8; }); await sleep(300); await shot('o_fire');
+    await T(() => __T.fire(false));
+    await T(() => { __T.audio && __T.audio.boom && __T.audio.boom(20, 1.5); });
+  },
   async top() {
     await T(() => { __T.start(1); __T.god(); __T.gun(false); __T.endWave(); __T.cam(0, 50, -80); __T.aim(0, -1.0); }); await sleep(2000); await shot('top');
   },

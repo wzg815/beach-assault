@@ -28,9 +28,14 @@ export function makeAudio() {
   S.mg = () => { if (!ok()) return; const t = ctx.currentTime; noise(t, 0.09, 4500, 900, 0.55, 'lowpass', 0.8); tone(t, 0.08, 150, 55, 0.7, 'triangle'); noise(t, 0.16, 900, 120, 0.35, 'lowpass', 1, brown); noise(t + 0.004, 0.03, 7000, 4000, 0.12, 'highpass', 0.6); };
   S.cannon = () => { if (!ok()) return; const t = ctx.currentTime; tone(t, 0.7, 70, 28, 1.0, 'sine'); noise(t, 0.6, 2500, 80, 1.0, 'lowpass', 0.6); noise(t, 2.2, 600, 40, 0.45, 'lowpass', 0.5, brown); noise(t + 0.02, 0.1, 6000, 2000, 0.25, 'highpass'); };
   S.missile = () => { if (!ok()) return; const t = ctx.currentTime; noise(t, 1.6, 1800, 500, 0.5, 'bandpass', 1.2, noiseBuf, master, 0.05); tone(t, 0.25, 90, 50, 0.4, 'triangle'); noise(t, 0.2, 3000, 600, 0.6); };
-  S.boom = (d = 30, s = 1) => { if (!ok()) return; const t = ctx.currentTime + delay(d); const g = distGain(d) * s; const lp = 3500 / (1 + d / 120);
-    noise(t, 0.35, lp, 100, 1.2 * g, 'lowpass', 0.7); tone(t, 1.0 * s, 65, 22, 1.1 * g, 'sine'); noise(t, 2.8 * Math.sqrt(s), 500, 30, 0.8 * g, 'lowpass', 0.5, brown, master, 0.02);
-    if (d < 140) noise(t + 0.25, 1.2, 4000, 800, 0.08 * g, 'highpass', 0.5, noiseBuf, master, 0.2); };
+  S.boom = (d = 30, s = 1) => { if (!ok()) return; const t = ctx.currentTime + delay(d); const g = distGain(d) * s; const lp = 4200 / (1 + d / 110);
+    noise(t, 0.06, 9000 / (1 + d / 80), 1500, 1.4 * g, 'lowpass', 0.6, noiseBuf, master, 0.001);       // supersonic crack
+    noise(t, 0.45, lp, 90, 1.5 * g, 'lowpass', 0.7);                                                  // blast body
+    tone(t, 1.3 * s, 58, 16, 1.4 * g, 'sine'); tone(t, 0.35, 120, 40, 0.7 * g, 'triangle');            // sub thump
+    noise(t, 3.4 * Math.sqrt(s), 420, 25, 1.0 * g, 'lowpass', 0.5, brown, master, 0.02);              // rolling tail
+    if (d < 160) noise(t + 0.2, 1.6, 5000, 900, 0.12 * g, 'highpass', 0.5, noiseBuf, master, 0.15);  // falling debris / sand
+    for (const [dt, k] of [[0.42, 0.32], [1.05, 0.18]]) noise(t + dt, 1.8, 380, 40, k * g, 'lowpass', 0.6, brown, master, 0.08);  // echo off the cliffs
+  };
   S.splash = (d = 30, s = 1) => { if (!ok()) return; const t = ctx.currentTime + delay(d); const g = distGain(d) * s; noise(t, 1.4, 2500, 300, 0.5 * g, 'lowpass', 0.6, noiseBuf, master, 0.03); tone(t, 0.6, 60, 25, 0.7 * g, 'sine'); };
   S.whiz = () => { if (!ok()) return; const t = ctx.currentTime; noise(t, 0.12, 5000, 2000, 0.12, 'bandpass', 4); };
   S.hitMetal = (d) => { if (!ok()) return; const t = ctx.currentTime + delay(d); const g = distGain(d); tone(t, 0.12, 2400 + Math.random() * 1500, 1600, 0.12 * g, 'square'); noise(t, 0.05, 6000, 3000, 0.1 * g, 'highpass'); };
@@ -59,9 +64,16 @@ export function makeAudio() {
       const surf = ctx.createBufferSource(); surf.buffer = brown; surf.loop = true; const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 700; const g = ctx.createGain(); g.gain.value = 0.25;
       const lfo = ctx.createOscillator(); lfo.frequency.value = 0.09; const lg = ctx.createGain(); lg.gain.value = 0.18; lfo.connect(lg); lg.connect(g.gain); lfo.start();
       const wind = ctx.createBufferSource(); wind.buffer = noiseBuf; wind.loop = true; const wf = ctx.createBiquadFilter(); wf.type = 'bandpass'; wf.frequency.value = 500; wf.Q.value = 0.4; const wg = ctx.createGain(); wg.gain.value = 0.03;
-      surf.connect(f); f.connect(g); g.connect(master); wind.connect(wf); wf.connect(wg); wg.connect(master); surf.start(); wind.start(); amb = { surf, wind, lfo, g, wg };
-    } else if (!on && amb) { try { amb.surf.stop(); amb.wind.stop(); amb.lfo.stop(); } catch (e) {} amb = null; }
+      surf.connect(f); f.connect(g); g.connect(master); wind.connect(wf); wf.connect(wg); wg.connect(master); surf.start(); wind.start();
+      const rum = ctx.createBufferSource(); rum.buffer = brown; rum.loop = true; const rf = ctx.createBiquadFilter(); rf.type = 'lowpass'; rf.frequency.value = 110; const rg = ctx.createGain(); rg.gain.value = 0.22;
+      const rl = ctx.createOscillator(); rl.frequency.value = 0.23; const rlg = ctx.createGain(); rlg.gain.value = 0.12; rl.connect(rlg); rlg.connect(rg.gain); rl.start();
+      rum.connect(rf); rf.connect(rg); rg.connect(master); rum.start(Math.random());
+      const salvo = () => { if (!amb) return; S.distant(); amb.to = setTimeout(salvo, 1800 + Math.random() * 4200); };
+      amb = { surf, wind, lfo, g, wg, rum, rl }; amb.to = setTimeout(salvo, 900);
+    } else if (!on && amb) { clearTimeout(amb.to); try { amb.surf.stop(); amb.wind.stop(); amb.lfo.stop(); amb.rum.stop(); amb.rl.stop(); } catch (e) {} amb = null; }
   };
-  S.distant = () => { if (!ok()) return; const d = 600 + Math.random() * 1500; const t = ctx.currentTime; noise(t, 2.5, 300, 30, 0.25, 'lowpass', 0.5, brown, master, 0.05); };
+  // distant artillery: a ragged salvo of 1-4 muffled thumps with a long rolling tail
+  S.distant = () => { if (!ok()) return; const t0 = ctx.currentTime; const n = 1 + Math.floor(Math.random() * 4); const k = 0.5 + Math.random() * 0.6;
+    for (let i = 0; i < n; i++) { const t = t0 + i * (0.12 + Math.random() * 0.5); tone(t, 0.9, 48, 20, 0.35 * k, 'sine', master, 0.01); noise(t, 2.8, 240, 25, 0.32 * k, 'lowpass', 0.5, brown, master, 0.04); } };
   return S;
 }

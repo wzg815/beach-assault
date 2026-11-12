@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { TB, PLAYER, heightAt, normalAt, fbm } from './terrain.js';
 import { pbr } from './assets.js';
+import { closeLid } from './weapons.js';
 
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _p = new THREE.Vector3(), _n = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0);
 
@@ -234,16 +235,15 @@ function buildParapet(A, G, P, add, quality) {
   }
   cas.castShadow = true; grp.add(cas);
   // ammo cans + a wooden crate on the lip, within reach of the gun
-  if (G.ammo) for (const [x, z, r] of [[-2.9, -1.75, 0.25], [-2.35, -1.8, -0.1], [3.1, -1.7, 1.4]]) { const o = shadowAll(G.ammo.scene.clone()); o.position.set(x, top, z); o.rotation.y = r; o.scale.setScalar(1.2); grp.add(o); }
+  if (G.ammo) for (const [x, z, r] of [[-2.9, -1.75, 0.25], [-2.35, -1.8, -0.1], [3.1, -1.7, 1.4]]) { const o = closeLid(shadowAll(G.ammo.scene.clone())); o.position.set(x, top, z); o.rotation.y = r; o.scale.setScalar(1.2); grp.add(o); }
   const wood = pbr(A, 'worn-concrete'); wood.color = new THREE.Color(0.42, 0.33, 0.22); wood.roughness = 0.9;
   mk(mbox(0.7, 0.32, 0.42, 0.5), 4.1, top + 0.16, -1.85, 0, 0.3, 0, wood);
   add(grp);
   const sb = G.sb_wall || G.sb_set;
-  if (sb) for (const [x, z, r, sc, y] of [[-hw - 0.5, 0.4, -0.38, 1.0, 1.0], [hw + 0.5, 0.4, 0.38 + Math.PI, 1.0, 1.0], [-hw - 1.2, -2.6, 0.2, 0.9, 0.2], [hw + 1.3, -2.7, -0.2, 0.9, 0.2], [-hw + 1.0, -1.75, 0.04, 0.55, 2], [hw - 1.0, -1.8, -0.05, 0.55, 2]]) {
+  if (sb) for (const [x, z, r, sc, y] of [[-hw - 0.5, 0.4, -0.38, 1.0, 1.0], [hw + 0.5, 0.4, 0.38 + Math.PI, 1.0, 1.0], [-hw - 1.2, -2.6, 0.2, 0.9, 0.2], [hw + 1.3, -2.7, -0.2, 0.9, 0.2]]) {
     const o = shadowAll(sb.scene.clone()); o.position.set(P.x + x, (y > 1.5 ? top - 0.02 : y > 0.5 ? top + 1.0 : heightAt(P.x + x, P.z + z)), P.z + z); o.rotation.y = r; o.scale.setScalar(sc); add(o);
   }
   if (G.sb_corner) for (const sx of [-1, 1]) { const o = shadowAll(G.sb_corner.scene.clone()); o.position.set(P.x + sx * 6.6, heightAt(P.x + sx * 6.6, P.z + 1.5) - 0.1, P.z + 1.5); o.rotation.y = sx > 0 ? Math.PI : -Math.PI / 2; add(o); }
-  if (G.rubble) { const ms = [place(P.x - 3.2, P.z - 3.6, 0.6, 0.55, -0.15), place(P.x + 2.6, P.z - 4.0, 2.2, 0.45, -0.15)]; add(instanceModel(G.rubble, ms)); }
   return top;
 }
 // Scrubby dune vegetation: sedge, oat grass, dead thornbush and clumps scattered on the dune/backshore.

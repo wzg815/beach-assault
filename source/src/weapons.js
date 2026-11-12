@@ -67,6 +67,11 @@ function buildMG(A) {
 }
 // Browning M2 (CC-BY, britdawgmasterfunk) with gloved first-person arms (CC-BY, bumstrum) gripping the spade grips.
 // Group origin = centre of the spade grips; barrel points down -z.
+// the ammo-can model is authored with its lid standing open: drop the lid (belt feeds straight out of the open can)
+export function closeLid(o) {
+  let lid = null; o.traverse((c) => { if (c.name === 'lid') lid = c; }); if (!lid) return o;
+  lid.visible = false; return o;
+}
 const _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _m4 = new THREE.Matrix4();
 function ik2(root, mid, end, target) {
   // analytic two-bone IK: bend the elbow for the right reach, then swing the shoulder onto the target
@@ -79,6 +84,7 @@ function ik2(root, mid, end, target) {
   const dq = new THREE.Quaternion().setFromUnitVectors(from, to); root.getWorldQuaternion(_q); const pw = root.parent.getWorldQuaternion(new THREE.Quaternion());
   root.quaternion.copy(pw.invert().multiply(dq.multiply(_q))); root.updateMatrixWorld(true);
 }
+export const ARM_POSE = { roll: 0.35, pitch: -0.8, yaw: 0.7, curl: 1.8, thumb: 0.4, tx: 0, ty: -0.035, tz: 0.075 };
 function buildM2(A, quality) {
   const g = new THREE.Group(); const k = 0.0205; const lo = quality === 'low';
   const m = A.glb.m2.scene; m.scale.setScalar(k); m.position.set(0, -0.5 * k, -20.7 * k); g.add(m);
@@ -87,25 +93,30 @@ function buildM2(A, quality) {
     o.castShadow = false; o.receiveShadow = true; if (o.parent && /barrel/.test(o.parent.name)) bar = o; });
   if (!bar) bar = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial());
   // ammo can + belt on the feed side
-  if (A.glb.ammo) { const can = A.glb.ammo.scene.clone(); can.scale.setScalar(1.0); can.position.set(-0.23, -0.3, -0.5); can.rotation.y = Math.PI / 2; g.add(can); }
+  if (A.glb.ammo) { const can = closeLid(A.glb.ammo.scene.clone()); can.scale.setScalar(1.0); can.position.set(-0.23, -0.3, -0.5); can.rotation.y = Math.PI / 2; g.add(can); }
   const brass = new THREE.MeshStandardMaterial({ color: 0xb08a3a, roughness: 0.35, metalness: 0.9 });
   for (let i = 0; i < 8; i++) { const t = i / 7; const o = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.075, 6), brass); o.position.set(-0.2 + t * 0.12, -0.12 + Math.sin(t * Math.PI) * 0.04 + t * 0.1, -0.42); o.rotation.set(0, 0, Math.PI / 2); g.add(o); }
   // arms
   if (A.glb.arms) {
     const arms = A.glb.arms.scene; const ka = 0.0118; arms.scale.setScalar(ka); arms.rotation.y = Math.PI; arms.position.set(0, -0.15, 0.3); g.add(arms);
     const B = {}; arms.traverse((o) => { if (o.isBone) B[o.name.replace(/_\d+$/, '')] = o; if (o.isMesh) { o.frustumCulled = false; o.castShadow = false; o.material.color?.multiplyScalar(0.9); } });
-    g.updateMatrixWorld(true);
+    const bind = new Map(); arms.traverse((o) => { if (o.isBone) bind.set(o, o.quaternion.clone()); });
     const gx = 3.9 * k * 0.92;
-    for (const [side, sx] of [['L', 1], ['R', -1]]) {
-      // the rig's L arm sits at +x before the 180° turn, i.e. on screen right after it; grip x = -sx * ...
-      const up = B[side + '_arm'], el = B[side + '_elbow'], wr = B[side + '_wrist']; if (!up || !el || !wr) continue;
-      const tgt = g.localToWorld(V(side === 'L' ? -gx : gx, -0.035, 0.075));
-      ik2(up, el, wr, tgt);
-      // palm in, thumb up, fingers wrapped round the grip
-      wr.rotateZ(sx * 1.25); wr.rotateX(0.25); wr.updateMatrixWorld(true);
-      for (const f of ['point', 'middle', 'ring', 'pink']) for (let j = 1; j <= 3; j++) { const b = B[side + '_' + f + j]; if (b) b.rotateX(j === 1 ? 0.9 : 1.1); }
-      for (let j = 2; j <= 3; j++) { const b = B[side + '_thumb' + j]; if (b) b.rotateX(0.4); }
-    }
+    // P: wrist roll / pitch / yaw, finger curl, thumb bend, grip target offset
+    g.userData.pose = (P) => {
+      for (const [b, q] of bind) b.quaternion.copy(q);
+      g.updateMatrixWorld(true);
+      for (const [side, sx] of [['L', 1], ['R', -1]]) {
+        const up = B[side + '_arm'], el = B[side + '_elbow'], wr = B[side + '_wrist']; if (!up || !el || !wr) continue;
+        const gxs = side === 'L' ? -gx : gx;
+        ik2(up, el, wr, g.localToWorld(V(gxs - sx * P.tx, P.ty, P.tz)));
+        wr.rotateZ(sx * P.roll); wr.rotateX(P.pitch); wr.rotateY(sx * P.yaw); wr.updateMatrixWorld(true);
+        for (const f of ['point', 'middle', 'ring', 'pink']) for (let j = 1; j <= 3; j++) { const b = B[side + '_' + f + j]; if (b) b['rotate' + (P.ax || 'X')]((P.cs ? sx : 1) * P.curl * (j === 1 ? 0.8 : 1)); }
+        for (let j = 2; j <= 3; j++) { const b = B[side + '_thumb' + j]; if (b) b.rotateX(P.thumb); }
+      }
+      g.updateMatrixWorld(true);
+    };
+    g.userData.pose(ARM_POSE);
     g.userData.B = B;
   }
   return { g, bar, muzzleLocal: V(0, 0.01, -1.6), m2: true };
@@ -132,6 +143,10 @@ export class Weapons {
   constructor(G, camera) {
     this.G = G; this.cam = camera; this.cur = 0; this.heat = 0; this.over = false; this.cd = 0; this.reload = [0, 0, 0]; this.reloadT = [0.09, 2.1, 3.4];
     this.mg = G.A.glb.m2 ? buildM2(G.A, G.quality) : buildMG(G.A); if (!this.mg.m2) this.mg.g.scale.setScalar(0.72); camera.add(this.mg.g); this.mgBase = [0.0, -0.285, -0.82];
+    // ejected .50 cal brass: tiny world-space rigid bodies
+    this.fireGlow = 0; this.casings = []; this.casMax = G.quality === 'low' ? 24 : 60;
+    this.casM = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.0065, 0.0065, 0.1, 6), new THREE.MeshStandardMaterial({ color: 0xc09048, roughness: 0.3, metalness: 0.9 }), this.casMax);
+    this.casM.count = 0; this.casM.frustumCulled = false; G.scene.add(this.casM);
     this.ml = buildLauncher(); this.ml.g.position.set(0.24, -0.2, -0.28); camera.add(this.ml.g); this.ml.g.visible = false;
     this.kick = 0; this.shells = []; this.missiles = []; this.lock = null; this.lockT = 0; this.shots = 0; this.hits = 0;
     this.switchT = 0;
@@ -160,13 +175,17 @@ export class Weapons {
     const cool = firing && this.cur === 0 && !this.over ? 0.12 : 0.42;
     this.heat = Math.max(0, this.heat - cool * dt); if (this.over && this.heat < 0.3) this.over = false;
     this.kick = Math.max(0, this.kick - dt * 9);
+    this.fireGlow = firing && this.cur === 0 && !this.over ? Math.min(1, this.fireGlow + dt * 1.5) : Math.max(0, this.fireGlow - dt * 0.6);
+    this.updateCasings(dt);
+    // a hot barrel smokes
+    if (this.mg.m2 && this.mg.g.visible && this.heat > 0.3 && Math.random() < dt * 10 * this.heat) { this.mg.g.updateMatrixWorld(true); G.fx.trailPuff(this.mg.g.localToWorld(_d.set(rr(-0.02, 0.02), 0.04, rr(-1.3, -0.7))).clone(), 0.12 + this.heat * 0.12, COLORS.smoke, 0.12 + this.heat * 0.2); }
     const w = this.cur;
     // view models
     const zoom = G.zoomK || 0; const sw = this.switchT / 0.35;
     this.mg.g.visible = !this.hideGun && (w === 0 || w === 1); this.ml.g.visible = !this.hideGun && w === 2;
     const mgDown = w === 1 ? 0.55 : 0;
     const BP = this.mg.m2 ? this.mgBase : [0, -0.25, -0.3]; this.mg.g.position.set(BP[0] + rr(-1, 1) * this.kick * 0.004, BP[1] - mgDown - sw * 0.3 + zoom * 0.08, BP[2] + this.kick * 0.035 - zoom * 0.05);
-    this.mg.g.rotation.set(0.03 + this.kick * 0.02 - zoom * 0.03, 0, 0);
+    const kk = this.mg.m2 ? this.kick : 0; this.mg.g.rotation.set(0.03 + this.kick * 0.02 - zoom * 0.03 + rr(-1, 1) * kk * 0.008, rr(-1, 1) * kk * 0.007, rr(-1, 1) * kk * 0.012);
     this.ml.g.position.set(0.24 - zoom * 0.1, -0.2 - sw * 0.3 + zoom * 0.05, -0.28 + this.kick * 0.05);
     const glow = Math.max(0, this.heat - 0.45) / 0.55; this.mg.bar.material.emissive = this.mg.bar.material.emissive || new THREE.Color(); this.mg.bar.material.emissive.setRGB(glow * 0.9, glow * 0.18, 0);
     if (w === 2) this.updateLock(dt); else { this.lock = null; }
@@ -183,7 +202,8 @@ export class Weapons {
       G.fx.muzzle(mz, d, 1.1, true); G.audio.mg(); this.kick = 1; G.shake(0.06);
       this.shots++;
       if (this.shots % 2 === 0) G.fx.tracer(mz, hit.p, 850, COLORS.tracer, 0.07);
-      if (Math.random() < 0.25) G.fx.trailPuff(mz, 0.25, COLORS.smoke, 0.18);
+      this.ejectCasing();
+      if (Math.random() < 0.5) G.fx.trailPuff(mz, 0.3, COLORS.smoke, 0.22);
       const delay = hit.t / 850 * 1000;
       setTimeout(() => {
         if (!G.running) return;
@@ -262,5 +282,29 @@ export class Weapons {
       }
     }
   }
-  clear() { this.shells.length = 0; this.missiles.length = 0; this.heat = 0; this.over = false; this.reload = [0, 0, 0]; this.lock = null; }
+  ejectCasing() {
+    if (!this.mg.m2) return; const g = this.mg.g; g.updateMatrixWorld(true);
+    const p = g.localToWorld(V(rr(-0.01, 0.01), -0.08, -0.3)); const q = this.cam.getWorldQuaternion(new THREE.Quaternion());
+    const v = V(rr(0.5, 1.1), rr(-1.6, -0.6), rr(0.1, 0.5)).applyQuaternion(q);
+    if (this.casings.length >= this.casMax) this.casings.shift();
+    this.casings.push({ p, v, r: V(rr(0, 6), rr(0, 6), 0), w: V(rr(-25, 25), rr(-25, 25), 0), t: 0 });
+  }
+  updateCasings(dt) {
+    const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), one = V(1, 1, 1); let n = 0;
+    for (let i = 0; i < this.casings.length; i++) {
+      const c = this.casings[i]; c.t += dt; if (c.t > 2.2) { this.casings.splice(i, 1); i--; continue; }
+      c.v.y -= 9.8 * dt; c.p.addScaledVector(c.v, dt); c.r.x += c.w.x * dt; c.r.y += c.w.y * dt;
+      const floor = heightAt(c.p.x, c.p.z) + 0.01; if (c.p.y < floor) { c.p.y = floor; c.v.multiplyScalar(0.35); c.v.y = Math.abs(c.v.y) * 0.4; c.w.multiplyScalar(0.5); }
+      m.compose(c.p, q.setFromEuler(e.set(c.r.x, c.r.y, 0)), one); this.casM.setMatrixAt(n++, m);
+    }
+    this.casM.count = n; this.casM.instanceMatrix.needsUpdate = true;
+  }
+  // screen position + strength of the barrel heat haze (for the post shader)
+  shimmer() {
+    const w = this.cur; const k = (w === 0 && this.mg.g.visible && this.mg.m2) ? Math.max(0, this.heat - 0.15) / 0.85 * 0.9 + this.fireGlow * 0.25 : 0;
+    if (k <= 0.01) return { k: 0 };
+    this.mg.g.updateMatrixWorld(true); const p = this.mg.g.localToWorld(_d.set(0, 0.05, -1.0)).project(this.cam);
+    return { k: Math.min(1, k), u: p.x * 0.5 + 0.5, v: p.y * 0.5 + 0.5 };
+  }
+  clear() { this.fireGlow = 0; this.casings && (this.casings.length = 0); this.shells.length = 0; this.missiles.length = 0; this.heat = 0; this.over = false; this.reload = [0, 0, 0]; this.lock = null; }
 }

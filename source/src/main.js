@@ -138,6 +138,13 @@ function waveEvents(n) {
   const helis = n >= 2 ? Math.min(4, Math.floor(n / 2)) : 0, gun = n >= 6 ? Math.floor((n - 4) / 2) : 0, chin = n >= 5 ? (n >= 8 ? 2 : 1) : 0, jets = n >= 4 ? Math.min(5, n - 3) : 0, props = n >= 3 ? Math.min(3, Math.floor(n / 3)) : 0;
   const tr = lo ? 6 : 10, trR = lo ? 3 : 5;
   const span = 26 + n * 5;
+  if (n === 1) {
+    // open in the thick of it: three craft grinding onto the sand with ramps dropping, a squad already ashore, two more close behind
+    for (const [x, dz] of [[-38, 4], [6, 1.5], [44, 7]]) at(0, () => { const e = enemies.spawnLCVP(x + rr(-4, 4), tr, -999); e.z = e.zl - dz; });
+    at(0, () => { enemies.spawnBeachSquad(lo ? 5 : 9, -22, -56); enemies.spawnBeachSquad(lo ? 4 : 8, 22, -52); enemies.spawnBeachSquad(lo ? 2 : 5, 0, -44); });
+    for (let i = 0; i < 6; i++) at(0.4 + i * 0.9 + rr(0, 0.5), () => G.explode(new THREE.Vector3(rr(-60, 60), 0, rr(-78, -46)).setY(0), rr(1.0, 1.6), { water: false }));
+    for (const x of [-70, 72]) at(0, () => { const e = enemies.spawnLCVP(x, tr, -999); e.z = e.zl - rr(45, 70); });
+  }
   lanes(lc).forEach((x, i) => at(1 + (i * span) / lc + rr(0, 4), () => enemies.spawnLCVP(x, tr)));
   lanes(rib).forEach((x, i) => at(6 + (i * span) / rib + rr(0, 5), () => enemies.spawnRIB(x, trR)));
   lanes(tanks).forEach((x, i) => at(10 + (i * span) / Math.max(1, tanks), () => enemies.spawnTank(x, false)));
@@ -338,7 +345,8 @@ function update(dt) {
   }
 }
 function render(dt) {
-  const g = post.grade.uniforms; g.time.value = G.time; g.dmg.value = dmgFlash * 0.8; g.exposure.value = 1.0;
+  const g = post.grade.uniforms; g.time.value = G.time;
+  { const hs = weapons.shimmer(); g.heat.value = hs.k; if (hs.k > 0) g.heatUV.value.set(hs.u, hs.v); } g.dmg.value = dmgFlash * 0.8; g.exposure.value = 1.0;
   _v.copy(camera.position).add(G.sunDir.clone().multiplyScalar(1000)).project(camera);
   g.sunUV.value.set((_v.x + 1) / 2, (_v.y + 1) / 2, _v.z < 1 && Math.abs(_v.x) < 1.6 && Math.abs(_v.y) < 1.6 ? 1 : 0);
   post.comp.render(dt);

@@ -6,15 +6,19 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 
 // Final grade: exposure, ACES filmic, split-toning, contrast, vignette, grain, damage tint, sun glare.
 const GradeShader = {
-  uniforms: { tDiffuse: { value: null }, exposure: { value: 1.0 }, time: { value: 0 }, vig: { value: 0.32 }, grain: { value: 0.035 }, dmg: { value: 0 }, sat: { value: 0.8 }, sunUV: { value: new THREE.Vector3(0.5, 0.5, 0) }, aspect: { value: 1.7 }, zoom: { value: 0 } },
+  uniforms: { tDiffuse: { value: null }, exposure: { value: 1.0 }, time: { value: 0 }, vig: { value: 0.32 }, grain: { value: 0.035 }, dmg: { value: 0 }, sat: { value: 0.8 }, sunUV: { value: new THREE.Vector3(0.5, 0.5, 0) }, aspect: { value: 1.7 }, zoom: { value: 0 }, heat: { value: 0 }, heatUV: { value: new THREE.Vector2(0.5, 0.3) } },
   vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
   fragmentShader: /* glsl */`
-    uniform sampler2D tDiffuse; uniform float exposure, time, vig, grain, dmg, sat, aspect, zoom; uniform vec3 sunUV; varying vec2 vUv;
+    uniform sampler2D tDiffuse; uniform float exposure, time, vig, grain, dmg, sat, aspect, zoom, heat; uniform vec3 sunUV; uniform vec2 heatUV; varying vec2 vUv;
     vec3 aces(vec3 x){ const mat3 I = mat3(0.59719,0.07600,0.02840,0.35458,0.90834,0.13383,0.04823,0.01566,0.83777); const mat3 O = mat3(1.60475,-0.10208,-0.00327,-0.53108,1.10813,-0.07276,-0.07367,-0.00605,1.07602);
       x = I * x; vec3 a = x * (x + 0.0245786) - 0.000090537; vec3 b = x * (0.983729 * x + 0.4329510) + 0.238081; return clamp(O * (a / b), 0.0, 1.0); }
     float h(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
     void main(){
-      vec2 uv = vUv; vec2 c = uv - 0.5;
+      vec2 uv = vUv;
+      // heat shimmer rising off a hot MG barrel: a wobbling refraction column above the barrel
+      if (heat > 0.01) { vec2 d = uv - heatUV - vec2(0.0, 0.08); float m = exp(-pow(d.x / 0.07, 2.0) - pow(d.y / 0.12, 2.0)) * smoothstep(-0.06, 0.0, uv.y - heatUV.y) * heat;
+        uv += vec2(sin(uv.y * 160.0 - time * 17.0 + sin(uv.x * 90.0) * 2.0), cos(uv.x * 120.0 + time * 13.0)) * vec2(0.0035, 0.0025) * m; }
+      vec2 c = uv - 0.5;
       // slight chromatic fringe toward the edges
       float ca = 0.0016 * dot(c, c) * 4.0;
       vec3 col = vec3(texture2D(tDiffuse, uv - c * ca).r, texture2D(tDiffuse, uv).g, texture2D(tDiffuse, uv + c * ca).b);

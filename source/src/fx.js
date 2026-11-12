@@ -241,6 +241,11 @@ export class FX {
   bloodPool(x, z, s = 1) { if (this.blood) this.bloodD.add(x, z, rr(1.4, 2.4) * s, undefined, rr(0.75, 0.95)); }
   muzzle(p, dir, s = 1, light = true) {
     this.flash.spawn({ p, s0: 0.9 * s, s1: 1.3 * s, life: 0.05, f0: Math.random() * 4 | 0, em: 2, c: _hot, fin: 0.01 });
+    if (dir) { // forward flame tongue + a second petal down the line of fire, and a puff of muzzle smoke
+      this.flash.spawn({ p: _a.copy(p).addScaledVector(dir, 0.35 * s), s0: 0.6 * s, s1: 0.9 * s, life: 0.04, f0: Math.random() * 4 | 0, em: 2.5, c: _hot, fin: 0.01 });
+      this.streak.spawn({ p, v: _b.copy(dir).multiplyScalar(14 * s), len: 0.7 * s, w: 0.16 * s, life: 0.045, c: _hot });
+      if (Math.random() < 0.6) this.smoke.spawn({ p: _a.copy(p).addScaledVector(dir, 0.5), s0: 0.25 * s, s1: rr(0.9, 1.5) * s, life: rr(0.6, 1.0), a: 0.22, c: _smokeC, f0: Math.random() * 16 | 0, v: _b.copy(dir).multiplyScalar(2.5).add(_n.set(0, 0.5, 0)), drag: 3 });
+    }
     if (light) this.light(p, 160 * s, 0.06, 0xffb070);
   }
   tracer(from, to, speed = 700, color = _tracer, w = 0.09) {

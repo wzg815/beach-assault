@@ -208,14 +208,18 @@ export class Enemies {
     if (k >= 1) { s.lieY = p.y; if (h > -0.2) G.fx.bloodPool(p.x + Math.sin(s.yaw) * f.dir * 0.9, p.z + Math.cos(s.yaw) * f.dir * 0.9, 1); }
   }
   // ---------------------------------------------------------------- landing craft
-  spawnLCVP(x, troops) {
+  spawnLCVP(x, troops, z0) {
     const G = this.G; const { group, ramp } = makeLCVP({ hull: this.hullMat, dark: this.darkMat, n: (this.lcvpN = (this.lcvpN || 0) + 1) });
-    const zl = beachZ(x, 0.9); const e = { type: 'lcvp', obj: group, ramp, alive: true, hp: 240, x, z: -430 - rr(0, 120), zl, speed: rr(6.5, 8.5), state: 'run', t: 0, troops: [], yaw: Math.PI * 0 + 0, spheres: [{ o: V(0, 0.4, -3.4), r: 2.0 }, { o: V(0, 0.4, 0), r: 2.0 }, { o: V(0, 0.4, 3.4), r: 2.0 }], metal: true, score: 300 };
+    const zl = beachZ(x, 0.9); const e = { type: 'lcvp', obj: group, ramp, alive: true, hp: 240, x, z: z0 !== undefined ? Math.min(z0, zl - 0.5) : -430 - rr(0, 120), zl, speed: rr(6.5, 8.5), state: 'run', t: 0, troops: [], yaw: Math.PI * 0 + 0, spheres: [{ o: V(0, 0.4, -3.4), r: 2.0 }, { o: V(0, 0.4, 0), r: 2.0 }, { o: V(0, 0.4, 3.4), r: 2.0 }], metal: true, score: 300 };
     e.obj.position.set(x, 0, e.z); G.scene.add(e.obj);
     const n = Math.min(troops, Math.max(0, this.maxSoldiers - this.soldiersAlive()));
     for (let i = 0; i < n; i++) { const row = Math.floor(i / 3), col = i % 3; e.troops.push(this.makeSoldier(e.obj, V((col - 1) * 0.85 + rr(-0.08, 0.08), -0.62, 3.0 - row * 0.95))); }
     e.dispose = () => e.obj.removeFromParent();
     this.list.push(e); return e;
+  }
+  // troops already ashore and running (used to open wave 1 mid-assault)
+  spawnBeachSquad(n, x0, z0) {
+    for (let i = 0; i < n; i++) { if (this.soldiersAlive() >= this.maxSoldiers) break; const s = this.makeSoldier(null, V()); this.disembark(s, V(x0 + rr(-7, 7), 0, z0 + rr(-6, 6)), 0); s.yaw = 0; }
   }
   spawnRIB(x, troops) {
     const G = this.G; const m = this.mil.rib; if (!m) return this.spawnLCVP(x, troops);
