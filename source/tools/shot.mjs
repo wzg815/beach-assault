@@ -98,6 +98,11 @@ const scripts = {
     console.log(JSON.stringify(await T(() => __T.state())));
     await T(() => { __T.gun(false); const b = __T.enemies.list.find(e => e.type === 'lcvp'); const p = b.obj.position; __T.cam(p.x + 10, 3.5, p.z + 22); __T.aim(0.4, -0.12); }); await sleep(1500); await shot('w_lcvp');
   },
+  async intro() {
+    await T(() => { __T.start(1, true); });
+    await T(() => __T.flush());
+    for (const [i, w] of [[1, 0.5], [2, 2.6], [3, 2.4], [4, 2.0]]) { await T((n) => __T.step(n), w); await sleep(900); await shot('intro' + i); }
+  },
   async top() {
     await T(() => { __T.start(1); __T.god(); __T.gun(false); __T.endWave(); __T.cam(0, 50, -80); __T.aim(0, -1.0); }); await sleep(2000); await shot('top');
   },

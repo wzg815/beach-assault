@@ -160,6 +160,26 @@ function newGame() {
   hide('menu'); show('hud'); hideAll(); audio.unlock(); audio.ambience(true);
   if (!touch) lockPointer();
   startWave(1);
+  if (!G.skipIntro) startIntro();
+}
+// Opening fly-in: low over the fleet and the landing craft, up the beach and into the gun pit.
+const INTRO_PTS = [[-360, 34, -1020], [-210, 20, -720], [-40, 11, -430], [14, 6.5, -170], [6, 10, -32], [CAM.x, CAM.y, CAM.z]].map((p) => new THREE.Vector3(...p));
+const introCurve = new THREE.CatmullRomCurve3(INTRO_PTS, false, 'centripetal');
+function startIntro() {
+  // put a few landing craft right under the flight path so the fly-in passes over the assault
+  for (const [x, z] of [[-150, -640], [-70, -500], [-10, -420], [-110, -440]]) { const e = enemies.spawnLCVP(x, G.quality === 'low' ? 6 : 10); if (e) { e.z = z; e.x = x; } }
+  G.intro = { t: 0, dur: 9, boomT: 0.4 }; document.body.classList.add('cine'); weapons.hideGun = true; }
+function endIntro() { if (!G.intro) return; G.intro = null; document.body.classList.remove('cine'); weapons.hideGun = false; }
+const _iq = new THREE.Quaternion(), _iq2 = new THREE.Quaternion(), _im = new THREE.Matrix4(), _ie = new THREE.Euler();
+function updateIntro(dt) {
+  const I = G.intro; I.t += dt; I.boomT -= dt;
+  if (I.boomT <= 0) { I.boomT = rr(0.35, 0.8); const ah = introCurve.getPoint(Math.min(1, I.t / I.dur + rr(0.08, 0.2))); const x = ah.x + rr(-70, 70), z = ah.z + rr(-40, 40); if (Math.hypot(x - CAM.x, z - CAM.z) < 55) {} else if (heightAt(x, z) < -1) G.explode(_w.set(x, 0, z), rr(1.3, 2.2), { water: true }); else G.explode(_w.set(x, heightAt(x, z), z), rr(1.2, 1.8), { big: true }); } const u = Math.min(1, I.t / I.dur); const e = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
+  introCurve.getPoint(e, camera.position);
+  const ahead = introCurve.getPoint(Math.min(1, e + 0.06), _w.clone()); const tgt = ahead.lerp(_v.set(0, 3, -70), 0.55);
+  _im.lookAt(camera.position, tgt, THREE.Object3D.DEFAULT_UP); _iq.setFromRotationMatrix(_im);
+  _iq2.setFromEuler(_ie.set(pitch, yaw, 0, 'YXZ')); _iq.slerp(_iq2, THREE.MathUtils.smoothstep(u, 0.78, 1));
+  camera.quaternion.copy(_iq); camera.updateMatrixWorld();
+  if (u >= 1) endIntro();
 }
 function waveDone() {
   G.running = false; G.state = 'summary'; firing = false; releasePointer();
@@ -230,6 +250,7 @@ function releasePointer() { if (document.pointerLockElement) document.exitPointe
 let dragging = false, lx = 0, ly = 0;
 const look = (dx, dy, k = 1) => { const f = camera.fov / 58; const s = 0.0023 * settings.sens / 100 * f * k; yaw = clamp(yaw - dx * s, -1.35, 1.35); pitch = clamp(pitch - dy * s, -0.5, 0.62); };
 document.addEventListener('pointerlockchange', () => { if (!document.pointerLockElement && G.state === 'play' && !touch && !G.noAutoPause) pause(); });
+for (const ev of ['pointerdown', 'keydown']) window.addEventListener(ev, () => { if (G.intro && G.intro.t > 0.6) endIntro(); }, true);
 canvas.addEventListener('mousedown', (e) => {
   if (touch || G.state !== 'play') return; audio.unlock();
   if (!document.pointerLockElement) { lockPointer(); dragging = true; lx = e.clientX; ly = e.clientY; }
@@ -283,7 +304,8 @@ function update(dt) {
   const sk = shakeA * shakeA * 0.05;
   camera.position.copy(G.freeCam || CAM); camera.rotation.set(pitch + (Math.random() - 0.5) * sk, yaw + (Math.random() - 0.5) * sk, (Math.random() - 0.5) * sk * 0.6, 'YXZ');
   camera.updateMatrixWorld();
-  if (playing) weapons.update(dt, firing); else weapons.update(dt, false);
+  if (G.intro) updateIntro(dt);
+  if (playing) weapons.update(dt, firing && !G.intro); else weapons.update(dt, false);
   // howitzer follows the gunner's aim
   if (world.howitzer) { const H = world.howitzer; const want = Math.PI + yaw * 0.9; H.rotation.y += (want - H.rotation.y) * Math.min(1, dt * 2); if (world.howBarrel) world.howBarrel.rotation.x = -clamp(0.08 + pitch * 0.6, -0.05, 0.6); }
   fx.update(dt, camera.position);
@@ -330,7 +352,7 @@ requestAnimationFrame(frame);
 if (typeof __TEST__ !== 'undefined' && __TEST__) {
   window.__T = {
     state: () => ({ state: G.state, wave: S.wave, score: S.score, hp: S.hp, hostiles: enemies.hostiles, events: S.events.length, enemies: enemies.list.length, soldiers: enemies.soldiersAlive(), corpses: enemies.corpses.length, shots: weapons.shots, hits: weapons.hits, kills: { ...S.kills } }),
-    start: (d = 1) => { diff = d; G.noAutoPause = true; newGame(); },
+    start: (d = 1, intro = false) => { diff = d; G.noAutoPause = true; G.skipIntro = !intro; newGame(); },
     god: (v = true) => { S.god = v; },
     aim: (y, p) => { yaw = y; pitch = p; },
     fire: (v) => { firing = v; }, zoom: (v) => { zoomHeld = v; },
