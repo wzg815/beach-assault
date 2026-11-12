@@ -1,12 +1,13 @@
 import * as THREE from 'three';
 import { heightAt } from './terrain.js';
 import { COLORS } from './fx.js';
+import { pbr } from './assets.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const _a = V(), _b = V(), _c = V(), _d = V();
 const rr = (a, b) => a + Math.random() * (b - a);
 export const WEAPONS = [
-  { name: '重机枪', key: 'mg', fov: 34 },
+  { name: '重机枪', key: 'mg', fov: 42 },
   { name: '榴弹炮', key: 'cannon', fov: 26 },
   { name: '防空导弹', key: 'missile', fov: 30 },
 ];
@@ -14,7 +15,11 @@ export const WEAPONS = [
 function gunMetal(c = 0x2b2d2a, r = 0.42, m = 0.85) { return new THREE.MeshStandardMaterial({ color: c, roughness: r, metalness: m }); }
 // Procedural M2-style heavy machine gun with a gun shield, seen from the gunner's position.
 function buildMG(A) {
-  const g = new THREE.Group(); const metal = gunMetal(); const dark = gunMetal(0x1a1b1a, 0.55, 0.7); const olive = new THREE.MeshStandardMaterial({ color: 0x4b5139, roughness: 0.7, metalness: 0.35 });
+  const g = new THREE.Group();
+  const tex = (key, col, o = {}) => { const m = pbr(A, key, o); m.color = new THREE.Color(col); return m; };
+  const nrm = A.tex['rusty-metal_normal'] || null; if (nrm) { nrm.wrapS = nrm.wrapT = THREE.RepeatWrapping; }
+  const metal = new THREE.MeshStandardMaterial({ color: 0x4a4d4a, roughness: 0.45, metalness: 0.55, normalMap: nrm, normalScale: new THREE.Vector2(0.35, 0.35) });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x2e302d, roughness: 0.6, metalness: 0.45, normalMap: nrm, normalScale: new THREE.Vector2(0.5, 0.5) }); const olive = new THREE.MeshStandardMaterial({ color: 0x4b5139, roughness: 0.7, metalness: 0.35 });
   const wood = new THREE.MeshStandardMaterial({ color: 0x3a2a1c, roughness: 0.6 });
   const add = (geo, m, x, y, z, rx = 0, ry = 0, rz = 0, parent = g) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.set(rx, ry, rz); parent.add(o); return o; };
   add(new THREE.BoxGeometry(0.2, 0.19, 0.78), metal, 0, 0, 0.05);
@@ -43,8 +48,25 @@ function buildMG(A) {
   else can = add(new THREE.BoxGeometry(0.15, 0.2, 0.3), olive, -0.27, -0.14, 0.0);
   const brass = new THREE.MeshStandardMaterial({ color: 0xb08a3a, roughness: 0.35, metalness: 0.9 });
   for (let i = 0; i < 9; i++) { const t = i / 8; const o = add(new THREE.CylinderGeometry(0.01, 0.01, 0.1, 6), brass, -0.24 + t * 0.15, -0.05 + Math.sin(t * Math.PI) * 0.05 + t * 0.07, -0.02, Math.PI / 2, 0, 0); o.rotation.z = 0; o.rotation.x = 0; o.rotation.y = 0; o.rotation.set(0, 0, Math.PI / 2); }
+  // gun shield: olive-painted armour plate with a barrel notch, wings angled back
+  const plate = A.tex['rusty-hull-plate_color'] ? tex('rusty-hull-plate', 0x6d7258, { metalness: 0.5 }) : olive;
+  const T = 0.014, sy0 = -0.5, sy1 = -0.04, sz = -0.5;
+  for (const sx of [-1, 1]) {
+    add(new THREE.BoxGeometry(0.24, sy1 - sy0, T), plate, sx * 0.19, (sy0 + sy1) / 2, sz, 0, sx * -0.12, 0);
+    for (const by of [-0.4, -0.1]) add(new THREE.CylinderGeometry(0.009, 0.009, 0.02, 6).rotateX(Math.PI / 2), dark, sx * 0.24, by, sz + 0.02);
+  }
+  add(new THREE.BoxGeometry(0.14, 0.44, T), plate, 0, -0.28, sz);
+  add(new THREE.BoxGeometry(0.64, 0.025, 0.03), dark, 0, sy1 + 0.005, sz);   // rolled top edge
   g.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = true; } });
   return { g, bar, muzzleLocal: V(0, 0, -1.63) };
+}
+// keep the triangles of one glove of the pair (split on the bounding-box centre x)
+function splitGlove(geo, left) {
+  geo.computeBoundingBox(); const cx = (geo.boundingBox.min.x + geo.boundingBox.max.x) / 2;
+  const pos = geo.attributes.position; const idx = geo.index ? geo.index.array : [...Array(pos.count).keys()]; const keep = [];
+  for (let i = 0; i < idx.length; i += 3) { const x = (pos.getX(idx[i]) + pos.getX(idx[i + 1]) + pos.getX(idx[i + 2])) / 3; if ((x < cx) === left) keep.push(idx[i], idx[i + 1], idx[i + 2]); }
+  geo.setIndex(keep); geo.computeBoundingBox();
+  const c = geo.boundingBox.getCenter(V()); geo.translate(-c.x, -c.y, -c.z); return geo;
 }
 function buildLauncher() {
   const g = new THREE.Group(); const olive = new THREE.MeshStandardMaterial({ color: 0x51573f, roughness: 0.65, metalness: 0.3 }); const dark = gunMetal(0x1d1e1c, 0.5, 0.6);
@@ -59,7 +81,7 @@ function buildLauncher() {
 export class Weapons {
   constructor(G, camera) {
     this.G = G; this.cam = camera; this.cur = 0; this.heat = 0; this.over = false; this.cd = 0; this.reload = [0, 0, 0]; this.reloadT = [0.09, 2.1, 3.4];
-    this.mg = buildMG(G.A); this.mg.g.scale.setScalar(0.85); camera.add(this.mg.g);
+    this.mg = buildMG(G.A); this.mg.g.scale.setScalar(0.72); camera.add(this.mg.g);
     this.ml = buildLauncher(); this.ml.g.position.set(0.24, -0.2, -0.28); camera.add(this.ml.g); this.ml.g.visible = false;
     this.kick = 0; this.shells = []; this.missiles = []; this.lock = null; this.lockT = 0; this.shots = 0; this.hits = 0;
     this.switchT = 0;
@@ -93,8 +115,8 @@ export class Weapons {
     const zoom = G.zoomK || 0; const sw = this.switchT / 0.35;
     this.mg.g.visible = !this.hideGun && (w === 0 || w === 1); this.ml.g.visible = !this.hideGun && w === 2;
     const mgDown = w === 1 ? 0.55 : 0;
-    this.mg.g.position.set(0.0 + rr(-1, 1) * this.kick * 0.004, -0.34 - mgDown - sw * 0.3 + zoom * 0.2, -0.05 + this.kick * 0.035 - zoom * 0.05);
-    this.mg.g.rotation.set(0.075 + this.kick * 0.02 - zoom * 0.06, 0, 0);
+    this.mg.g.position.set(0.0 + rr(-1, 1) * this.kick * 0.004, -0.2 - mgDown - sw * 0.3 + zoom * 0.1, -0.34 + this.kick * 0.035 - zoom * 0.05);
+    this.mg.g.rotation.set(0.03 + this.kick * 0.02 - zoom * 0.03, 0, 0);
     this.ml.g.position.set(0.24 - zoom * 0.1, -0.2 - sw * 0.3 + zoom * 0.05, -0.28 + this.kick * 0.05);
     const glow = Math.max(0, this.heat - 0.45) / 0.55; this.mg.bar.material.emissive = this.mg.bar.material.emissive || new THREE.Color(); this.mg.bar.material.emissive.setRGB(glow * 0.9, glow * 0.18, 0);
     if (w === 2) this.updateLock(dt); else { this.lock = null; }

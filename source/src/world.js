@@ -43,10 +43,10 @@ export function placeObj(o, x, z, rot = 0, sc = 1, yOff = 0) { o.position.set(x,
 
 function terrainMaterial(A) {
   const L = (k) => { const t = A.tex[k]; if (t) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; } return t; };
-  const dc = L('lake-sand_color'), wc = L('wet-sand_color'), gc = L('meadow-ground_color'), rc = L('granite-rock_color');
+  const dc = L('lake-sand_color'), wc = L('wet-sand_color'), gc = L('mud_color'), rc = L('granite-rock_color');
   for (const t of [dc, wc, gc, rc]) if (t) t.colorSpace = THREE.SRGBColorSpace;
   const m = new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0 });
-  const U = { tD: dc, tDN: L('lake-sand_normal'), tDO: L('lake-sand_orm'), tW: wc, tWN: L('wet-sand_normal'), tWO: L('wet-sand_orm'), tG: gc, tGN: L('meadow-ground_normal'), tR: rc, tRN: L('granite-rock_normal') };
+  const U = { tD: dc, tDN: L('lake-sand_normal'), tDO: L('lake-sand_orm'), tW: wc, tWN: L('wet-sand_normal'), tWO: L('wet-sand_orm'), tG: gc, tGN: L('mud_normal'), tR: rc, tRN: L('granite-rock_normal') };
   m.onBeforeCompile = (s) => {
     for (const k in U) s.uniforms[k] = { value: U[k] };
     s.vertexShader = s.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vWP; varying vec3 vWN;')
@@ -68,7 +68,7 @@ function terrainMaterial(A) {
       wRock = clamp(wRock, 0.0, 1.0);
       vec3 col = cD.rgb * vec3(0.86, 0.8, 0.7); vec3 tn = nD; float rgh = oD.g; float ao = oD.r;
       col = mix(col, cW.rgb * 0.82, wWet); tn = mix(tn, nW, wWet); rgh = mix(rgh, oW.g * 0.55, wWet); ao = mix(ao, oW.r, wWet);
-      col = mix(col, cG.rgb * vec3(0.92, 0.95, 0.8), wGrass); tn = mix(tn, nG, wGrass); rgh = mix(rgh, 0.92, wGrass);
+      wGrass *= smoothstep(0.15, 0.6, mac + nz * 0.8) * 0.9; col = mix(col, cG.rgb * vec3(0.82, 0.76, 0.66), wGrass); tn = mix(tn, nG, wGrass); rgh = mix(rgh, 0.95, wGrass);
       col = mix(col, cR.rgb, wRock); tn = mix(tn, nR, wRock); rgh = mix(rgh, 0.85, wRock);
       col *= 0.8 + 0.4 * mac;
       float uw = smoothstep(0.0, -5.0, hgt);
@@ -156,6 +156,54 @@ function fleet(horizon) {
   return { group: g, flashes };
 }
 
+// Box with UVs scaled to metres so tiling PBR textures keep a constant texel density.
+function mbox(w, h, d, t = 2) {
+  const g = new THREE.BoxGeometry(w, h, d); const uv = g.attributes.uv;
+  const dims = [[d, h], [d, h], [w, d], [w, d], [w, h], [w, h]];
+  for (let f = 0; f < 6; f++) for (let i = 0; i < 4; i++) { const k = f * 4 + i; uv.setXY(k, uv.getX(k) * dims[f][0] / t, uv.getY(k) * dims[f][1] / t); }
+  return g;
+}
+// Atlantic-wall style open gun pit: thick cast-concrete parapet with chamfered top, angled cheek walls,
+// sandbags piled on the cheeks, rubble and tufts. The MG fires over the parapet; the sky stays open for AA.
+function buildParapet(A, G, P, add, quality) {
+  const con = pbr(A, 'worn-concrete'); con.color = new THREE.Color(0.78, 0.76, 0.72);
+  const top = P.h + 1.62 - 0.8; const grp = new THREE.Group(); grp.position.set(P.x, 0, P.z);
+  const mk = (geo, x, y, z, rx = 0, ry = 0, rz = 0) => { const m = new THREE.Mesh(geo, con); m.position.set(x, y, z); m.rotation.set(rx, ry, rz); m.castShadow = m.receiveShadow = true; grp.add(m); return m; };
+  const base = P.h - 1.2, hw = 5.4;
+  mk(mbox(hw * 2, top - base, 1.1), 0, (top + base) / 2, -1.55);                    // front wall
+  mk(mbox(hw * 2, 0.3, 0.8), 0, top - 0.12, -2.0, -0.5);                         // chamfered outer lip
+  mk(mbox(hw * 2 + 0.2, 0.18, 0.5), 0, top + 0.07, -1.18);                          // inner coping
+  for (const sx of [-1, 1]) {                                                         // cheek walls
+    const h2 = top + 0.55;
+    mk(mbox(1.0, h2 - base, 3.6), sx * (hw + 0.6), (h2 + base) / 2, -0.4, 0, sx * -0.38);
+    mk(mbox(1.2, 0.3, 3.8), sx * (hw + 0.55), h2 + 0.05, -0.4, 0, sx * -0.38, sx * 0.12);
+  }
+  // bullet-chipped embrasure step under the gun
+  
+  add(grp);
+  const sb = G.sb_wall || G.sb_set;
+  if (sb) for (const [x, z, r, sc, y] of [[-hw - 0.5, 0.4, -0.38, 1.0, 1.0], [hw + 0.5, 0.4, 0.38 + Math.PI, 1.0, 1.0], [-hw - 1.2, -2.6, 0.2, 0.9, 0.2], [hw + 1.3, -2.7, -0.2, 0.9, 0.2]]) {
+    const o = shadowAll(sb.scene.clone()); o.position.set(P.x + x, (y > 0.5 ? top + 1.2 : heightAt(P.x + x, P.z + z)), P.z + z); o.rotation.y = r; o.scale.setScalar(sc); add(o);
+  }
+  if (G.sb_corner) for (const sx of [-1, 1]) { const o = shadowAll(G.sb_corner.scene.clone()); o.position.set(P.x + sx * 6.6, heightAt(P.x + sx * 6.6, P.z + 1.5) - 0.1, P.z + 1.5); o.rotation.y = sx > 0 ? Math.PI : -Math.PI / 2; add(o); }
+  if (G.rubble) { const ms = [place(P.x - 3.2, P.z - 3.6, 0.6, 0.55, -0.15), place(P.x + 2.6, P.z - 4.0, 2.2, 0.45, -0.15)]; add(instanceModel(G.rubble, ms)); }
+}
+// Scrubby dune vegetation: sedge, oat grass, dead thornbush and clumps scattered on the dune/backshore.
+function buildTufts(G, add, quality, rnd) {
+  const N = quality === 'low' ? 160 : quality === 'mid' ? 420 : 760;
+  const kinds = [['sedge', 0.42], ['oat', 0.28], ['clump', 0.18], ['thorn', 0.12]];
+  const out = {}; for (const [k] of kinds) out[k] = [];
+  for (let i = 0; i < N * 3 && Object.values(out).reduce((a, b) => a + b.length, 0) < N; i++) {
+    const x = (rnd() - 0.5) * 300, z = -30 + rnd() * 70;
+    const dx = x - PLAYER.x, dz = z - PLAYER.z; const r = Math.hypot(dx, dz); if (r < 5.5) continue;
+    const h = heightAt(x, z); if (h < 2.2) continue;
+    const near = r < 30 ? 1 : 0; if (!near && rnd() < 0.35) continue;
+    let u = rnd(), k = 'sedge'; for (const [kk, w] of kinds) { if (u < w) { k = kk; break; } u -= w; }
+    out[k].push(place(x, z, rnd() * 6.28, (k === 'thorn' ? 0.7 : 1.0) * (0.8 + rnd() * 0.9), -0.05, 0.6));
+  }
+  for (const [k] of kinds) if (G[k] && out[k].length) add(instanceModel(G[k], out[k], false));
+}
+
 export function buildWorld(A, scene, quality, horizon) {
   const W = { solids: [], hedgehogs: [], covers: [] };
   scene.add(buildTerrain(A, quality));
@@ -163,8 +211,7 @@ export function buildWorld(A, scene, quality, horizon) {
   const add = (o) => { scene.add(o); return o; };
   // --- player emplacement ---
   const P = PLAYER;
-  if (G.sb_pos) { const o = shadowAll(G.sb_pos.scene.clone()); placeObj(o, P.x, P.z - 1.3, Math.PI, 1.6, -1.25); add(o); }
-  if (G.sb_curve) { for (const [dx, dz, r] of [[-3.4, 0.6, 0.5], [3.4, 0.6, -0.5 + Math.PI]]) { const o = shadowAll(G.sb_curve.scene.clone()); placeObj(o, P.x + dx, P.z + dz, r, 1, -0.05); add(o); } }
+  buildParapet(A, G, P, add, quality);
   if (G.camonet) { const o = shadowAll(G.camonet.scene.clone(), true, true); placeObj(o, P.x + 0.5, P.z + 4.2, 0.1, 1.15, -0.1); add(o); }
   if (G.ammo) { const ms = []; for (const [dx, dz, r] of [[1.6, 1.6, 0.3], [1.95, 1.4, 0.1], [1.75, 1.9, 1.7], [-1.7, 1.8, -0.4], [-1.5, 2.2, 2.0]]) ms.push(place(P.x + dx, P.z + dz, r, 1.2)); add(instanceModel(G.ammo, ms)); }
   if (G.howitzer) { const o = militarize(shadowAll(G.howitzer.scene.clone()), 0x6e7354); placeObj(o, P.x + 10.5, P.z + 3.5, Math.PI + 0.06, 1, 0); add(o); W.howitzer = o; o.traverse((c) => { if (c.name === 'barrel') W.howBarrel = c; }); }
@@ -201,6 +248,7 @@ export function buildWorld(A, scene, quality, horizon) {
   // horizon fleet
   const F = fleet(horizon); add(F.group); W.fleet = F;
   W.rnd = rnd;
+  buildTufts(G, add, quality, mulberry(7));
   return W;
 }
 export function mulberry(a) { return function () { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }

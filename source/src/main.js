@@ -27,6 +27,8 @@ const renderer = makeRenderer(canvas, settings.q);
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(58, 1, 0.1, 9000);
 scene.add(camera);
+// soft fill so the gun and gunner read against the bright sea (sky bounce off the concrete)
+{ const fill = new THREE.PointLight(0xc9d2e0, 14, 5, 2); fill.position.set(0.25, 0.45, 0.15); camera.add(fill); }
 const CAM = new THREE.Vector3(PLAYER.x, PLAYER.h + 1.62, PLAYER.z + 0.3);
 camera.position.copy(CAM);
 const audio = makeAudio(); audio.setVol(settings.vol / 100);
@@ -310,7 +312,7 @@ function update(dt) {
   }
 }
 function render(dt) {
-  const g = post.grade.uniforms; g.time.value = G.time; g.dmg.value = dmgFlash * 0.8; g.exposure.value = 0.9;
+  const g = post.grade.uniforms; g.time.value = G.time; g.dmg.value = dmgFlash * 0.8; g.exposure.value = 1.0;
   _v.copy(camera.position).add(G.sunDir.clone().multiplyScalar(1000)).project(camera);
   g.sunUV.value.set((_v.x + 1) / 2, (_v.y + 1) / 2, _v.z < 1 && Math.abs(_v.x) < 1.6 && Math.abs(_v.y) < 1.6 ? 1 : 0);
   post.comp.render(dt);

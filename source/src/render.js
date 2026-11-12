@@ -6,7 +6,7 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 
 // Final grade: exposure, ACES filmic, split-toning, contrast, vignette, grain, damage tint, sun glare.
 const GradeShader = {
-  uniforms: { tDiffuse: { value: null }, exposure: { value: 1.0 }, time: { value: 0 }, vig: { value: 0.32 }, grain: { value: 0.035 }, dmg: { value: 0 }, sat: { value: 0.88 }, sunUV: { value: new THREE.Vector3(0.5, 0.5, 0) }, aspect: { value: 1.7 }, zoom: { value: 0 } },
+  uniforms: { tDiffuse: { value: null }, exposure: { value: 1.0 }, time: { value: 0 }, vig: { value: 0.32 }, grain: { value: 0.035 }, dmg: { value: 0 }, sat: { value: 0.8 }, sunUV: { value: new THREE.Vector3(0.5, 0.5, 0) }, aspect: { value: 1.7 }, zoom: { value: 0 } },
   vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
   fragmentShader: /* glsl */`
     uniform sampler2D tDiffuse; uniform float exposure, time, vig, grain, dmg, sat, aspect, zoom; uniform vec3 sunUV; varying vec2 vUv;
@@ -26,7 +26,7 @@ const GradeShader = {
       col = mix(vec3(l), col, sat);
       // teal shadows / warm highlights
       col += (vec3(-0.012, 0.004, 0.018)) * (1.0 - smoothstep(0.0, 0.45, l)) + vec3(0.02, 0.008, -0.018) * smoothstep(0.45, 1.0, l);
-      col = (col - 0.5) * 1.06 + 0.5;
+      col = (col - 0.45) * 1.13 + 0.45;
       float v = smoothstep(0.85, 0.25, length(c * vec2(1.0, 0.85)) * (1.0 + vig));
       col *= mix(1.0 - vig, 1.0, v);
       col = mix(col, col * vec3(1.15, 0.55, 0.5), dmg * smoothstep(0.15, 0.6, length(c)));

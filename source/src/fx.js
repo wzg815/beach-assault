@@ -208,7 +208,7 @@ export class FX {
   }
   burn(p, s = 1) { // persistent burning wreck smoke+fire, call each frame with dt-weighted probability
     this.exp.spawn({ p: _a.copy(p).add(_b.set(rr(-0.6, 0.6) * s, rr(0, 0.8) * s, rr(-0.6, 0.6) * s)), v: _b.set(0, 2, 0), s0: 2.2 * s, s1: 3.6 * s, life: 0.7, f0: 10, nf: 22, em: 1.2, rv: rr(-1, 1), fin: 0.15 });
-    this.smoke.spawn({ p: _a.copy(p).setY(p.y + 1.5 * s), v: _b.set(rr(0.5, 1.2), rr(2.5, 4.5), rr(-0.3, 0.3)), s0: 2 * s, s1: rr(9, 14) * s, life: rr(5, 8), a: 0.7, drag: 0.15, c: _dark, f0: Math.random() * 16 | 0, rv: rr(-0.15, 0.15), fin: 0.06 });
+    this.smoke.spawn({ p: _a.copy(p).setY(p.y + 1.5 * s), v: _b.set(rr(0.5, 1.2), rr(2.5, 4.5), rr(-0.3, 0.3)), s0: 3 * s, s1: rr(14, 22) * s, life: rr(7, 11), a: 0.55, drag: 0.12, c: _smokeC, f0: Math.random() * 16 | 0, rv: rr(-0.15, 0.15), fin: 0.06 });
   }
   splash(p, s = 1) {
     this.spl.spawn({ p: _a.copy(p).setY(-0.3), s0: 1.5 * s, s1: rr(3.5, 5) * s, life: rr(0.7, 1.1), v: _b.set(0, 2.6 * s, 0), grav: 5, f0: Math.random() * 4 | 0, fin: 0.05, c: _water });

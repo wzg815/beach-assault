@@ -12,7 +12,7 @@ const url = (process.env.URL || 'http://localhost:8841/test.html') + (process.en
 await page.goto(url);
 await page.waitForFunction(() => document.getElementById('boot').classList.contains('done') || /失败/.test(document.getElementById('bootmsg').textContent), null, { timeout: 240000 });
 console.log('boot ms', Date.now() - t0, await page.evaluate(() => document.getElementById('bootmsg').textContent));
-const shot = async (n) => { await page.screenshot({ path: `shots/${mode}_${n}.png` }); console.log('shot', n); };
+const shot = async (n) => { await page.screenshot({ path: `shots/${mode}_${n}.png`, timeout: 180000 }); console.log('shot', n); };
 const T = (f, ...a) => page.evaluate(f, ...a);
 const scripts = {
   async basic() {
@@ -85,6 +85,10 @@ const scripts = {
     await T(() => { __T.explode(-30, -95, 1.8); __T.explode(25, -70, 1.5); __T.explode(60, -120, 2); }); await sleep(600); await shot('b_mg');
     await T(() => __T.fire(false)); await T(() => __T.weapon(1)); await T(() => __T.zoom(true)); await sleep(1500); await shot('b_zoom'); await T(() => __T.zoom(false));
     await T(() => { __T.weapon(2); __T.aim(0.25, 0.08); }); await sleep(1500); await shot('b_aa');
+  },
+  async gunv() {
+    await T(() => { __T.start(1); __T.god(); __T.endWave(); __T.aim(0.0, -0.06); }); await sleep(2500); await shot('gunv');
+    await T(() => __T.aim(0.6, -0.1)); await sleep(1500); await shot('gunv2');
   },
   async top() {
     await T(() => { __T.start(1); __T.god(); __T.gun(false); __T.endWave(); __T.cam(0, 50, -80); __T.aim(0, -1.0); }); await sleep(2000); await shot('top');

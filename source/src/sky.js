@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 // Equirect sampling shared by the sky dome, the ocean reflections and the horizon fog.
-export const SKY = { rot: 3.45, cut: 0.5596, gain: 0.62 };
+export const SKY = { rot: 3.1, cut: 0.5596, gain: 0.62 };
 export const skyGLSL = /* glsl */`
 uniform sampler2D skyTex; uniform float skyRot; uniform float skyCut; uniform float skyGain;
 vec3 skyLookup(vec3 d){
@@ -29,7 +29,7 @@ export function makeSkyDome(tex) {
 }
 // Sun direction in world space for the given sky rotation (from the HDRI's brightest pixel at u=0.605, elev 2.4 deg).
 export function sunDir(elevDeg) {
-  const thImg = (0.605 - 0.5) * Math.PI * 2; const th = thImg - SKY.rot; const el = elevDeg * Math.PI / 180;
+  const thImg = (0.607 - 0.5) * Math.PI * 2; const th = thImg - SKY.rot; const el = elevDeg * Math.PI / 180;
   return new THREE.Vector3(Math.cos(th) * Math.cos(el), Math.sin(el), Math.sin(th) * Math.cos(el));
 }
 // Average horizon colour (linear) for fog: read the texture's horizon rows on a canvas.
