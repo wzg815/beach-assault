@@ -28,7 +28,7 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(58, 1, 0.1, 9000);
 scene.add(camera);
 // soft fill so the gun and gunner read against the bright sea (sky bounce off the concrete)
-{ const fill = new THREE.PointLight(0xc9d2e0, 14, 5, 2); fill.position.set(0.25, 0.45, 0.15); camera.add(fill); }
+{ const fill = new THREE.PointLight(0xc8bca8, 9, 5, 2); fill.position.set(0.25, 0.45, 0.15); camera.add(fill); }
 const CAM = new THREE.Vector3(PLAYER.x, PLAYER.h + 1.62, PLAYER.z + 0.3);
 camera.position.copy(CAM);
 const audio = makeAudio(); audio.setVol(settings.vol / 100);
@@ -129,11 +129,11 @@ function feed(t, c) { const f = $('feed'); const d = document.createElement('div
 
 function waveEvents(n) {
   const ev = []; const at = (t, f) => ev.push({ t, f }); const lo = G.quality === 'low';
-  const lanes = (k) => { const out = []; for (let i = 0; i < k; i++) out.push(clamp(-130 + (260 * (i + 0.5)) / k + rr(-14, 14), -150, 150)); return out.sort(() => Math.random() - 0.5); };
+  const lanes = (k) => { const out = []; for (let i = 0; i < k; i++) out.push(clamp(-100 + (200 * (i + 0.5)) / k + rr(-12, 12), -120, 120)); return out.sort(() => Math.random() - 0.5); };
   const lc = Math.min(7, 2 + Math.ceil(n * 0.6)), rib = Math.min(5, Math.floor(n / 2) + 1);
   const tanks = n >= 3 ? Math.min(4, Math.floor((n - 1) / 2)) : 0, ifv = n >= 4 ? Math.min(3, Math.floor((n - 2) / 3)) : 0;
   const helis = n >= 2 ? Math.min(4, Math.floor(n / 2)) : 0, gun = n >= 6 ? Math.floor((n - 4) / 2) : 0, chin = n >= 5 ? (n >= 8 ? 2 : 1) : 0, jets = n >= 4 ? Math.min(5, n - 3) : 0, props = n >= 3 ? Math.min(3, Math.floor(n / 3)) : 0;
-  const tr = lo ? 4 : 6, trR = lo ? 3 : 4;
+  const tr = lo ? 6 : 10, trR = lo ? 3 : 5;
   const span = 26 + n * 5;
   lanes(lc).forEach((x, i) => at(1 + (i * span) / lc + rr(0, 4), () => enemies.spawnLCVP(x, tr)));
   lanes(rib).forEach((x, i) => at(6 + (i * span) / rib + rr(0, 5), () => enemies.spawnRIB(x, trR)));
@@ -289,7 +289,7 @@ function update(dt) {
   fx.update(dt, camera.position);
   // ambience: naval guns flashing on the horizon, distant thunder of the barrage
   // burning wrecks set the mood: thick dark smoke columns drifting along the beach
-  if (!G.fires) G.fires = [[-48, -44, 1.0], [95, -150, 1.6], [-150, -200, 1.8], [40, -320, 2.2]].map(([x, z, s]) => ({ p: new THREE.Vector3(x, Math.max(0, heightAt(x, z)) + 0.5, z), s }));
+  if (!G.fires) G.fires = [[-48, -30, 1.0], [95, -150, 1.6], [-150, -200, 1.8], [40, -320, 2.2]].map(([x, z, s]) => ({ p: new THREE.Vector3(x, Math.max(0, heightAt(x, z)) + 0.5, z), s }));
   for (const f of G.fires) if (Math.random() < dt * (G.quality === 'low' ? 2.5 : 5)) fx.burn(f.p, f.s);
   ambT -= dt; if (ambT <= 0) { ambT = rr(1.5, 4.5); const f = world.fleet.flashes[Math.floor(Math.random() * world.fleet.flashes.length)]; fx.glowAt(f.clone().add(_v.set(rr(-40, 40), rr(5, 15), 0)), rr(25, 45), 0.18, fx.glow ? undefined : undefined, 3); setTimeout(() => audio.distant(), 2000 + Math.random() * 3000);
     if (G.state !== 'menu' && Math.random() < 0.25) { const x = rr(-200, 200), z = rr(-260, -150); G.explode(_w.set(x, 0, z), rr(1.2, 1.8), { water: true }); } }

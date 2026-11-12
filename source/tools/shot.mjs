@@ -90,6 +90,14 @@ const scripts = {
     await T(() => { __T.start(1); __T.god(); __T.endWave(); __T.aim(0.0, -0.06); }); await sleep(2500); await shot('gunv');
     await T(() => __T.aim(0.6, -0.1)); await sleep(1500); await shot('gunv2');
   },
+  async wave() {
+    await T(() => { __T.start(1); __T.god(); __T.flush(); });
+    await T(() => { for (const e of __T.enemies.list) if (e.type === 'lcvp' || e.type === 'rib') e.z = Math.max(e.z, -150); });
+    await T(() => __T.step(19)); await T(() => __T.aim(0.05, -0.12)); await sleep(1500); await shot('w_land');
+    await T(() => __T.step(6)); await sleep(1200); await shot('w_run');
+    console.log(JSON.stringify(await T(() => __T.state())));
+    await T(() => { __T.gun(false); const b = __T.enemies.list.find(e => e.type === 'lcvp'); const p = b.obj.position; __T.cam(p.x + 10, 3.5, p.z + 22); __T.aim(0.4, -0.12); }); await sleep(1500); await shot('w_lcvp');
+  },
   async top() {
     await T(() => { __T.start(1); __T.god(); __T.gun(false); __T.endWave(); __T.cam(0, 50, -80); __T.aim(0, -1.0); }); await sleep(2000); await shot('top');
   },

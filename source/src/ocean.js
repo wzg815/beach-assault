@@ -94,7 +94,7 @@ export function makeOcean(A, heightTex, sun, sunCol, fogCol, quality) {
         vec3 R = reflect(-V, N); R.y = abs(R.y) + 0.01;
         vec3 refl = skyLookup(R);
         float sd = max(dot(R, sunDir), 0.0);
-        vec3 spec = sunCol * (pow(sd, 1400.0) * 60.0 + pow(sd, 160.0) * 3.0 + pow(sd, 18.0) * 0.12);
+        vec3 spec = sunCol * (pow(sd, 1400.0) * 24.0 + pow(sd, 160.0) * 1.1 + pow(sd, 18.0) * 0.05);
         vec3 deep = vec3(0.010, 0.030, 0.040), shallow = vec3(0.06, 0.11, 0.09);
         vec3 body = mix(shallow, deep, smoothstep(0.0, 12.0, dep));
         float sss = pow(max(dot(V, -sunDir) * 0.5 + 0.5, 0.0), 3.0) * clamp(vCrest * 1.4, 0.0, 1.0);

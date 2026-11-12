@@ -13,13 +13,13 @@ const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const lerpAng = (a, b, t) => { let d = b - a; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return a + d * t; };
 export const AIM = () => new THREE.Vector3(PLAYER.x, PLAYER.h + 1.4, PLAYER.z);
 // sea depth 1.0 m contour near x (where boats beach)
-function beachZ(x, depth) { let z = -100; for (let i = 0; i < 80; i++) { if (heightAt(x, z) < -depth) return z; z -= 1.5; } return z; }
+function beachZ(x, depth) { let z = -62; for (let i = 0; i < 80; i++) { if (heightAt(x, z) < -depth) return z; z -= 1.5; } return z; }
 
 export class Enemies {
   constructor(G) {
     this.G = G; this.list = []; this.proj = []; this.corpses = [];
     const A = G.A;
-    this.hullMat = pbr(A, 'rusty-hull-plate'); this.hullMat.color = new THREE.Color(0.78, 0.84, 0.8); this.hullMat.metalness = 0.25;
+    this.hullMat = pbr(A, 'rusty-hull-plate'); this.hullMat.color = new THREE.Color(0.62, 0.68, 0.7); this.hullMat.metalness = 0.25;
     this.darkMat = new THREE.MeshStandardMaterial({ color: 0x2c302b, roughness: 0.8, metalness: 0.4 });
     this.helmetMat = new THREE.MeshStandardMaterial({ color: 0x3c4130, roughness: 0.75, metalness: 0.05 });
     this.packMat = new THREE.MeshStandardMaterial({ color: 0x4a4935, roughness: 0.95 });
@@ -31,7 +31,7 @@ export class Enemies {
     if (st) st.scene.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.color = new THREE.Color(0.78, 0.82, 0.66); o.castShadow = true; o.receiveShadow = false; o.frustumCulled = false; } });
     this.mil = {};
     for (const k of ['tank', 'ifv', 'heli', 'gunship', 'chinook', 'jet', 'prop', 'rib']) if (A.glb[k]) this.mil[k] = shadowAll(militarize(A.glb[k].scene.clone(), k === 'jet' ? 0x8a9196 : k === 'rib' ? 0x4b5040 : 0x6b6f4e), true, false);
-    this.maxSoldiers = G.quality === 'low' ? 26 : G.quality === 'mid' ? 38 : 52;
+    this.maxSoldiers = G.quality === 'low' ? 34 : G.quality === 'mid' ? 56 : 80;
   }
   count(t) { let n = 0; for (const e of this.list) if (e.alive && (!t || e.type === t)) n++; return n; }
   get hostiles() { let n = 0; for (const e of this.list) if (e.alive && !e.leaving) n++; return n; }
@@ -94,9 +94,9 @@ export class Enemies {
     const p = s.obj.position; const G = this.G;
     // advance by bounds toward the dunes, using hedgehogs as cover
     let best = null, bd = 1e9;
-    if (p.z < -70 && Math.random() < 0.7) for (const h of G.world.hedgehogs) { const dz = h.z - p.z; if (dz > 6 && dz < 40 && Math.abs(h.x - p.x) < 14) { const d = dz + Math.abs(h.x - p.x) * 0.6 + Math.random() * 10; if (d < bd) { bd = d; best = h; } } }
+    if (p.z < -48 && Math.random() < 0.7) for (const h of G.world.hedgehogs) { const dz = h.z - p.z; if (dz > 6 && dz < 40 && Math.abs(h.x - p.x) < 14) { const d = dz + Math.abs(h.x - p.x) * 0.6 + Math.random() * 10; if (d < bd) { bd = d; best = h; } } }
     if (best) s.goal.set(best.x + rr(-0.5, 0.5), 0, best.z + 1.2); else {
-      const zNext = Math.min(-15, p.z + rr(18, 34)); let x = p.x + rr(-8, 8); if (zNext > -45) x = x * 0.92 + Math.sign(x || 1) * rr(-2, 6);
+      const zNext = Math.min(-10, p.z + rr(12, 24)); let x = p.x + rr(-8, 8); if (zNext > -30) x = x * 0.92 + Math.sign(x || 1) * rr(-2, 6);
       s.goal.set(clamp(x, -150, 150), 0, zNext);
     }
     s.final = s.goal.z >= -16;
@@ -178,11 +178,11 @@ export class Enemies {
   }
   // ---------------------------------------------------------------- landing craft
   spawnLCVP(x, troops) {
-    const G = this.G; const { group, ramp } = makeLCVP({ hull: this.hullMat, dark: this.darkMat });
-    const zl = beachZ(x, 0.9); const e = { type: 'lcvp', obj: group, ramp, alive: true, hp: 240, x, z: -560 - rr(0, 160), zl, speed: rr(6.5, 8.5), state: 'run', t: 0, troops: [], yaw: Math.PI * 0 + 0, spheres: [{ o: V(0, 0.4, -3.4), r: 2.0 }, { o: V(0, 0.4, 0), r: 2.0 }, { o: V(0, 0.4, 3.4), r: 2.0 }], metal: true, score: 300 };
+    const G = this.G; const { group, ramp } = makeLCVP({ hull: this.hullMat, dark: this.darkMat, n: (this.lcvpN = (this.lcvpN || 0) + 1) });
+    const zl = beachZ(x, 0.9); const e = { type: 'lcvp', obj: group, ramp, alive: true, hp: 240, x, z: -430 - rr(0, 120), zl, speed: rr(6.5, 8.5), state: 'run', t: 0, troops: [], yaw: Math.PI * 0 + 0, spheres: [{ o: V(0, 0.4, -3.4), r: 2.0 }, { o: V(0, 0.4, 0), r: 2.0 }, { o: V(0, 0.4, 3.4), r: 2.0 }], metal: true, score: 300 };
     e.obj.position.set(x, 0, e.z); G.scene.add(e.obj);
     const n = Math.min(troops, Math.max(0, this.maxSoldiers - this.soldiersAlive()));
-    for (let i = 0; i < n; i++) { const row = Math.floor(i / 2), col = i % 2; e.troops.push(this.makeSoldier(e.obj, V((col ? 0.62 : -0.62) + rr(-0.08, 0.08), -0.62, 3.0 - row * 1.05))); }
+    for (let i = 0; i < n; i++) { const row = Math.floor(i / 3), col = i % 3; e.troops.push(this.makeSoldier(e.obj, V((col - 1) * 0.85 + rr(-0.08, 0.08), -0.62, 3.0 - row * 0.95))); }
     e.dispose = () => e.obj.removeFromParent();
     this.list.push(e); return e;
   }
@@ -235,7 +235,7 @@ export class Enemies {
     const G = this.G; const m = this.mil[ifv ? 'ifv' : 'tank']; if (!m) return null;
     const obj = new THREE.Group(); const b = SkeletonUtils.clone(m); obj.add(b);
     let turret = null, gun = null, ramp = null; b.traverse((o) => { if (o.name === 'turret') turret = o; if (o.name === 'gun') gun = o; if (o.name === 'ramp') ramp = o; });
-    const e = { type: ifv ? 'ifv' : 'tank', obj, turret, gun, ramp, alive: true, hp: ifv ? 420 : 720, x, z: -330 - rr(0, 80), speed: ifv ? 4.2 : 3.4, state: 'swim', t: 0, stopZ: rr(-62, -38), fireT: rr(4, 7), yaw: 0, armor: true, troops: ifv ? 4 : 0, spheres: [{ o: V(0, 1.3, -2.6), r: 2.0 }, { o: V(0, 1.3, 0), r: 2.1 }, { o: V(0, 1.3, 2.6), r: 2.0 }, { o: V(0, 2.8, 0), r: 1.5 }], metal: true, score: ifv ? 450 : 600 };
+    const e = { type: ifv ? 'ifv' : 'tank', obj, turret, gun, ramp, alive: true, hp: ifv ? 420 : 720, x, z: -330 - rr(0, 80), speed: ifv ? 4.2 : 3.4, state: 'swim', t: 0, stopZ: rr(-46, -28), fireT: rr(4, 7), yaw: 0, armor: true, troops: ifv ? 4 : 0, spheres: [{ o: V(0, 1.3, -2.6), r: 2.0 }, { o: V(0, 1.3, 0), r: 2.1 }, { o: V(0, 1.3, 2.6), r: 2.0 }, { o: V(0, 2.8, 0), r: 1.5 }], metal: true, score: ifv ? 450 : 600 };
     obj.position.set(x, -2, e.z); G.scene.add(obj);
     e.dispose = () => obj.removeFromParent(); this.list.push(e); return e;
   }
@@ -248,7 +248,7 @@ export class Enemies {
       if (e.z >= e.stopZ) { e.state = 'fight'; e.t = 0; }
       if (h < -0.5 && Math.random() < dt * 14) G.fx.wake(_a.set(e.x + rr(-2, 2), 0, e.z + rr(2.5, 4.5)), 1.1);
       if (h > 0 && Math.random() < dt * 6) G.fx.dust(_a.set(e.x + rr(-1.8, 1.8), h + 0.4, e.z - 4), 1.0);
-      if (e.type === 'ifv' && e.troops && e.z > -78 && h > 0.2) { // drop squad from the rear ramp
+      if (e.type === 'ifv' && e.troops && e.z > -58 && h > 0.2) { // drop squad from the rear ramp
         if (e.ramp) e.ramp.rotation.x = -1.2;
         while (e.troops > 0) { e.troops--; const s = this.makeSoldier(null, V()); this.disembark(s, V(e.x + rr(-1, 1), 0, e.z - 4.5), rr(-0.3, 0.3)); s.yaw = 0; }
       }
@@ -283,7 +283,7 @@ export class Enemies {
     const side = Math.random() < 0.5 ? -1 : 1;
     const e = { type: kind, obj, rotors, alive: true, hp: kind === 'chinook' ? 520 : kind === 'gunship' ? 280 : 170, air: true, state: 'in', t: 0, p: V(side * rr(60, 240), rr(70, 110), -900 - rr(0, 300)), v: V(), fireT: rr(3, 5), yaw: 0, metal: true, score: kind === 'chinook' ? 700 : kind === 'gunship' ? 550 : 400,
       spheres: kind === 'chinook' ? [{ o: V(0, 2.4, -6.5), r: 3 }, { o: V(0, 2.4, 0), r: 3 }, { o: V(0, 2.4, 6.5), r: 3 }] : [{ o: V(0, 1.6, 0.6), r: 2.2 }, { o: V(0, 1.8, -4.2), r: 1.2 }] };
-    if (kind === 'chinook') { e.hover = V(rr(-70, 70), 0, rr(-75, -52)); e.hover.y = heightAt(e.hover.x, e.hover.z) + 2.2; e.troops = Math.min(8, Math.max(0, this.maxSoldiers - this.soldiersAlive())); }
+    if (kind === 'chinook') { e.hover = V(rr(-60, 60), 0, rr(-52, -34)); e.hover.y = heightAt(e.hover.x, e.hover.z) + 2.2; e.troops = Math.min(8, Math.max(0, this.maxSoldiers - this.soldiersAlive())); }
     else e.hover = V(rr(-110, 110), rr(28, 48), rr(-190, -105));
     obj.position.copy(e.p); G.scene.add(obj);
     e.snd = G.audio.loop && G.audio.loop('heli');

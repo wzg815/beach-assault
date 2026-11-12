@@ -25,6 +25,11 @@ function buildMG(A) {
   add(new THREE.BoxGeometry(0.2, 0.19, 0.78), metal, 0, 0, 0.05);
   add(new THREE.BoxGeometry(0.205, 0.04, 0.5), dark, 0, 0.11, 0.0);      // feed cover
   add(new THREE.BoxGeometry(0.06, 0.05, 0.2), dark, 0, 0.15, -0.05);     // cover latch
+  const hinge = new THREE.CylinderGeometry(0.016, 0.016, 0.22, 10); hinge.rotateZ(Math.PI / 2); add(hinge, dark, 0, 0.125, 0.25);
+  for (const sx of [-1, 1]) { for (let i = 0; i < 7; i++) add(new THREE.SphereGeometry(0.007, 6, 4), dark, sx * 0.101, 0.05 - (i % 2) * 0.07, -0.25 + Math.floor(i / 2) * 0.16);
+    add(new THREE.BoxGeometry(0.008, 0.12, 0.6), metal, sx * 0.103, -0.01, 0.0); }
+  add(new THREE.BoxGeometry(0.16, 0.02, 0.36), metal, 0, 0.135, -0.02);  // cover top plate
+  for (let i = 0; i < 4; i++) add(new THREE.BoxGeometry(0.17, 0.006, 0.01), dark, 0, 0.146, -0.15 + i * 0.08); // stiffening ribs
   for (let i = 0; i < 5; i++) add(new THREE.BoxGeometry(0.21, 0.012, 0.012), dark, 0, 0.02 - i * 0.03, 0.3);
   const jacket = new THREE.CylinderGeometry(0.048, 0.048, 0.34, 18, 1, true); jacket.rotateX(Math.PI / 2); add(jacket, metal, 0, 0, -0.5);
   for (let i = 0; i < 6; i++) add(new THREE.TorusGeometry(0.049, 0.006, 6, 18), dark, 0, 0, -0.38 - i * 0.05);
@@ -50,7 +55,7 @@ function buildMG(A) {
   for (let i = 0; i < 9; i++) { const t = i / 8; const o = add(new THREE.CylinderGeometry(0.01, 0.01, 0.1, 6), brass, -0.24 + t * 0.15, -0.05 + Math.sin(t * Math.PI) * 0.05 + t * 0.07, -0.02, Math.PI / 2, 0, 0); o.rotation.z = 0; o.rotation.x = 0; o.rotation.y = 0; o.rotation.set(0, 0, Math.PI / 2); }
   // gun shield: olive-painted armour plate with a barrel notch, wings angled back
   const plate = A.tex['rusty-hull-plate_color'] ? tex('rusty-hull-plate', 0x6d7258, { metalness: 0.5 }) : olive;
-  const T = 0.014, sy0 = -0.5, sy1 = -0.04, sz = -0.5;
+  const T = 0.014, sy0 = -0.5, sy1 = 0.075, sz = -0.5;
   for (const sx of [-1, 1]) {
     add(new THREE.BoxGeometry(0.24, sy1 - sy0, T), plate, sx * 0.19, (sy0 + sy1) / 2, sz, 0, sx * -0.12, 0);
     for (const by of [-0.4, -0.1]) add(new THREE.CylinderGeometry(0.009, 0.009, 0.02, 6).rotateX(Math.PI / 2), dark, sx * 0.24, by, sz + 0.02);
@@ -115,7 +120,7 @@ export class Weapons {
     const zoom = G.zoomK || 0; const sw = this.switchT / 0.35;
     this.mg.g.visible = !this.hideGun && (w === 0 || w === 1); this.ml.g.visible = !this.hideGun && w === 2;
     const mgDown = w === 1 ? 0.55 : 0;
-    this.mg.g.position.set(0.0 + rr(-1, 1) * this.kick * 0.004, -0.2 - mgDown - sw * 0.3 + zoom * 0.1, -0.34 + this.kick * 0.035 - zoom * 0.05);
+    this.mg.g.position.set(0.0 + rr(-1, 1) * this.kick * 0.004, -0.25 - mgDown - sw * 0.3 + zoom * 0.08, -0.3 + this.kick * 0.035 - zoom * 0.05);
     this.mg.g.rotation.set(0.03 + this.kick * 0.02 - zoom * 0.03, 0, 0);
     this.ml.g.position.set(0.24 - zoom * 0.1, -0.2 - sw * 0.3 + zoom * 0.05, -0.28 + this.kick * 0.05);
     const glow = Math.max(0, this.heat - 0.45) / 0.55; this.mg.bar.material.emissive = this.mg.bar.material.emissive || new THREE.Color(); this.mg.bar.material.emissive.setRGB(glow * 0.9, glow * 0.18, 0);

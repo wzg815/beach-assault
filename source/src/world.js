@@ -63,7 +63,7 @@ function terrainMaterial(A) {
       vec3 nD = texture2D(tDN, uvD).xyz, nW = texture2D(tWN, uvW).xyz, nG = texture2D(tGN, uvG).xyz, nR = texture2D(tRN, uvR).xyz;
       vec3 oD = texture2D(tDO, uvD).xyz, oW = texture2D(tWO, uvW).xyz;
       float wWet = 1.0 - smoothstep(0.7, 2.4, hgt + nz * 1.4);
-      float wGrass = smoothstep(10.5, 13.4, hgt + nz * 3.0) * (1.0 - smoothstep(0.22, 0.42, slope));
+      float wGrass = smoothstep(5.0, 7.6, hgt + nz * 2.0) * (1.0 - smoothstep(0.22, 0.42, slope));
       float wRock = smoothstep(0.42, 0.62, slope + nz * 0.15) + smoothstep(18.0, 24.0, hgt) * smoothstep(190.0, 240.0, abs(vWP.x));
       wRock = clamp(wRock, 0.0, 1.0);
       vec3 col = cD.rgb * vec3(0.86, 0.8, 0.7); vec3 tn = nD; float rgh = oD.g; float ao = oD.r;
@@ -111,6 +111,16 @@ function hedgehogGeo() {
 }
 
 // Procedural LCVP landing craft (bow ramp toward +Z). Returns { group, ramp }.
+const _numMats = {};
+function hullNumberMat(n) {
+  const k = n % 6; if (_numMats[k]) return _numMats[k];
+  const c = document.createElement('canvas'); c.width = 256; c.height = 80; const x = c.getContext('2d');
+  x.fillStyle = 'rgba(0,0,0,0)'; x.fillRect(0, 0, 256, 80); x.fillStyle = 'rgba(225,225,215,0.85)'; x.font = 'bold 54px Arial Narrow, Arial, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillText(['PA 26-12', 'PA 33-21', 'PA 13-6', 'PA 45-17', 'PA 30-9', 'PA 26-4'][k], 128, 42);
+  x.globalCompositeOperation = 'destination-out'; for (let i = 0; i < 260; i++) { x.globalAlpha = Math.random() * 0.8; x.fillRect(Math.random() * 256, Math.random() * 80, 1 + Math.random() * 4, 1 + Math.random() * 3); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return (_numMats[k] = new THREE.MeshStandardMaterial({ map: t, transparent: true, roughness: 0.8, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
+}
 export function makeLCVP(mats) {
   const g = new THREE.Group(); const hull = mats.hull, dark = mats.dark;
   const add = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; g.add(o); return o; };
@@ -129,6 +139,13 @@ export function makeLCVP(mats) {
   add(new THREE.BoxGeometry(1.2, 0.9, 1.1), hull, 0.6, 1.5, -L / 2 + 1.0);
   add(new THREE.BoxGeometry(B - 0.3, 0.9, 1.6), dark, 0, -0.2, -L / 2 + 1.3);
   const ring = new THREE.TorusGeometry(0.32, 0.04, 6, 16); ring.rotateX(Math.PI / 2); add(ring, dark, -1.1, 1.55, -L / 2 + 1.4); add(ring, dark, 1.1, 1.55, -L / 2 + 1.4);
+  // rub rails, side frames and stencilled hull numbers (PA-xx Higgins boats)
+  for (const sx of [-1, 1]) {
+    add(new THREE.BoxGeometry(0.1, 0.12, L - 1.4), dark, sx * (B / 2 + 0.06), 0.55, -0.6);
+    add(new THREE.BoxGeometry(0.08, 0.08, L - 1.4), dark, sx * (B / 2 + 0.05), -0.25, -0.6);
+    for (let i = 0; i < 6; i++) add(new THREE.BoxGeometry(0.05, H * 0.9, 0.08), dark, sx * (B / 2 + 0.05), 0.2, -L / 2 + 1.2 + i * 1.45);
+    const num = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.5), hullNumberMat(mats.n || 0)); num.position.set(sx * (B / 2 + 0.075), 0.95, -L / 2 + 1.9); num.rotation.y = sx * Math.PI / 2; g.add(num);
+  }
   const ramp = new THREE.Group(); ramp.position.set(0, -0.62, L / 2 - 0.15); g.add(ramp);
   const rp = new THREE.Mesh(new THREE.BoxGeometry(B - 0.45, 2.15, 0.14), hull); rp.position.set(0, 1.05, 0); rp.castShadow = rp.receiveShadow = true; ramp.add(rp);
   for (let i = 0; i < 4; i++) { const rib = new THREE.Mesh(new THREE.BoxGeometry(B - 0.5, 0.08, 0.1), dark); rib.position.set(0, 0.3 + i * 0.5, 0.1); ramp.add(rib); }
@@ -224,22 +241,22 @@ export function buildWorld(A, scene, quality, horizon) {
   // beach obstacles
   if (G.wire) {
     const ms = [];
-    for (const [z0, gap] of [[-27, 7], [-58, 11]]) for (let x = -170; x < 170; x += 3.85) { if (Math.abs((x % 40)) < gap * 0.5 && Math.random() < 0.6) continue; ms.push(place(x, z0 + Math.sin(x * 0.07) * 2.5, Math.sin(x) * 0.08, 1, -0.05, 0.6)); }
+    for (const [z0, gap] of [[-17, 7], [-40, 11]]) for (let x = -170; x < 170; x += 3.85) { if (Math.abs((x % 40)) < gap * 0.5 && Math.random() < 0.6) continue; ms.push(place(x, z0 + Math.sin(x * 0.07) * 2.5, Math.sin(x) * 0.08, 1, -0.05, 0.6)); }
     add(instanceModel(G.wire, ms, quality !== 'low'));
   }
   const hg = hedgehogGeo(); const hm = pbr(A, 'rusty-metal'); hm.color = new THREE.Color(0.75, 0.68, 0.62);
   const hmats = []; const rnd = mulberry(42);
   for (let i = 0; i < 70; i++) {
-    const x = -180 + rnd() * 360, z = -128 + rnd() * 58; if (Math.abs(x) < 6 && z > -80) continue;
+    const x = -170 + rnd() * 340, z = -86 + rnd() * 40; if (Math.abs(x) < 6 && z > -50) continue;
     const s = 0.9 + rnd() * 0.3; hmats.push(place(x, z, rnd() * 6.28, s, -0.15)); W.hedgehogs.push(new THREE.Vector3(x, heightAt(x, z), z));
   }
   const him = new THREE.InstancedMesh(hg, hm, hmats.length); hmats.forEach((m, i) => him.setMatrixAt(i, m)); him.castShadow = true; him.receiveShadow = true; add(him);
   // wrecks and debris
-  if (G.truck) { const o = shadowAll(G.truck.scene.clone()); placeObj(o, -48, -44, 2.2, 1, -0.3); o.rotation.z = 0.12; add(o); W.covers.push(new THREE.Vector3(-48, 0, -44)); }
-  if (G.humvee) { const o = militarize(shadowAll(G.humvee.scene.clone()), 0x7a7458); placeObj(o, 58, -20, -0.7, 1, -0.2); o.rotation.z = -0.09; add(o); }
-  if (G.rubble) { const ms = [place(-30, -12, 1, 1.2, -0.3), place(36, -36, 2, 1.1, -0.3), place(-95, -30, 0.5, 1.4, -0.3)]; add(instanceModel(G.rubble, ms)); }
+  if (G.truck) { const o = shadowAll(G.truck.scene.clone()); placeObj(o, -48, -30, 2.2, 1, -0.3); o.rotation.z = 0.12; add(o); W.covers.push(new THREE.Vector3(-48, 0, -30)); }
+  if (G.humvee) { const o = militarize(shadowAll(G.humvee.scene.clone()), 0x7a7458); placeObj(o, 58, -12, -0.7, 1, -0.2); o.rotation.z = -0.09; add(o); }
+  if (G.rubble) { const ms = [place(-30, -12, 1, 1.2, -0.3), place(36, -26, 2, 1.1, -0.3), place(-95, -30, 0.5, 1.4, -0.3)]; add(instanceModel(G.rubble, ms)); }
   if (G.wreck) { const o = shadowAll(G.wreck.scene.clone()); o.position.set(150, -3.2, -185); o.rotation.set(0.12, -0.9, 0.22); o.scale.setScalar(1.3); add(o); }
-  if (G.reef) { const ms = []; for (let i = 0; i < 26; i++) { const x = -220 + rnd() * 440, z = -150 + rnd() * 50; ms.push(place(x, z, rnd() * 6, 0.9 + rnd() * 1.6, -0.25, 0.5)); } add(instanceModel(G.reef, ms)); }
+  if (G.reef) { const ms = []; for (let i = 0; i < 26; i++) { const x = -220 + rnd() * 440, z = -112 + rnd() * 40; ms.push(place(x, z, rnd() * 6, 0.9 + rnd() * 1.6, -0.25, 0.5)); } add(instanceModel(G.reef, ms)); }
   if (G.rock) { const ms = []; for (const [x, z, r, s] of [[-150, -40, 0.4, 2.2], [-128, -80, 2.4, 1.6], [170, -52, 1.2, 2.4], [140, -98, 3.0, 1.5], [-200, -110, 0.8, 2.8], [205, -118, 2.0, 3.2], [-110, 22, 1.2, 2.2], [120, 26, 2.2, 2.0]]) ms.push(place(x, z, r, s, -0.6, 0.6)); add(instanceModel(G.rock, ms)); }
   if (G.boulder) { const ms = []; for (let i = 0; i < 30; i++) { const x = (rnd() < 0.5 ? -1 : 1) * (60 + rnd() * 160), z = -100 + rnd() * 150; ms.push(place(x, z, rnd() * 6, 0.8 + rnd() * 1.4, -0.3, 0.5)); } add(instanceModel(G.boulder, ms)); }
   if (G.cliff) { const ms = [place(-268, -175, Math.PI * 0.62, 2.1, -6), place(-300, -110, Math.PI * 0.55, 1.9, -6), place(272, -170, -Math.PI * 0.62, 2.1, -6), place(305, -100, -Math.PI * 0.55, 2.0, -6)]; add(instanceModel(G.cliff, ms, false)); }
