@@ -148,7 +148,7 @@ export class FX {
     this.glow = new Sprites(T.fx_glow, { cols: 1, rows: 1, max: lo ? 200 : 400, blending: 'add', order: 8 });
     this.streak = new Streaks(T.fx_glow, lo ? 160 : 320);
     this.craters = new Decals(T.fx_crater, 2, lo ? 40 : 90, { life: 0 });
-    this.bloodD = new Decals(T.fx_blood_decal, 4, lo ? 40 : 90, { rough: 0.35, life: 0 });
+    this.bloodD = new Decals(T.fx_blood_decal, 4, lo ? 40 : 90, { rough: 0.55, life: 0 });
     for (const s of [this.exp, this.smoke, this.spl, this.bsp, this.flash, this.glow]) scene.add(s.mesh);
     scene.add(this.streak.mesh, this.craters.mesh, this.bloodD.mesh);
     // debris chunks
@@ -168,6 +168,7 @@ export class FX {
     best.l.position.copy(p); best.l.color.set(color); best.i0 = intensity; best.l.intensity = intensity; best.t = 0; best.d = dur;
   }
   update(dt, camPos) {
+    this.cam = camPos;
     this.time += dt;
     for (const s of [this.exp, this.smoke, this.spl, this.bsp, this.flash, this.glow]) s.update(dt);
     this.streak.update(dt); this.craters.update(dt); this.bloodD.update(dt);
@@ -223,10 +224,12 @@ export class FX {
   }
   bloodHit(p, dir, s = 1) {
     if (!this.blood) { this.smoke.spawn({ p, s0: 0.3, s1: 1.0, life: 0.5, a: 0.4, c: _dust, f0: Math.random() * 16 | 0 }); return; }
-    for (let i = 0; i < 2; i++) this.bsp.spawn({ p: _a.copy(p).addScaledVector(dir, 0.15 + i * 0.25), v: _b.copy(dir).multiplyScalar(rr(1, 2.5)).add(_n.set(0, rr(0.3, 1), 0)), s0: 0.35 * s, s1: rr(0.9, 1.5) * s, life: rr(0.22, 0.38), f0: Math.random() * 4 | 0, grav: 4, fin: 0.05, ease: 3, c: _bloodC });
-    this.bsp.spawn({ p, s0: 0.25 * s, s1: 0.8 * s, life: 0.5, a: 0.5, f0: Math.random() * 4 | 0, v: _b.set(0, -0.3, 0), c: _bloodC });
+    // keep the spray readable from the bunker: grow with distance to the camera
+    const cd = this.cam ? this.cam.distanceTo(p) : 30; s *= Math.min(2.6, Math.max(1, cd / 30));
+    for (let i = 0; i < 3; i++) this.bsp.spawn({ p: _a.copy(p).addScaledVector(dir, 0.15 + i * 0.3), v: _b.copy(dir).multiplyScalar(rr(1.2, 3)).add(_n.set(rr(-0.4, 0.4), rr(0.4, 1.2), rr(-0.4, 0.4))), s0: 0.4 * s, s1: rr(1.1, 1.8) * s, life: rr(0.35, 0.6), f0: Math.random() * 4 | 0, grav: 5, fin: 0.05, ease: 3, c: _bloodC });
+    this.bsp.spawn({ p, s0: 0.3 * s, s1: 1.2 * s, life: 0.9, a: 0.55, f0: Math.random() * 4 | 0, v: _b.set(0, -0.25, 0), c: _bloodC });
   }
-  bloodPool(x, z, s = 1) { if (this.blood) this.bloodD.add(x, z, rr(1.0, 1.8) * s, undefined, rr(0.75, 0.95)); }
+  bloodPool(x, z, s = 1) { if (this.blood) this.bloodD.add(x, z, rr(1.4, 2.4) * s, undefined, rr(0.75, 0.95)); }
   muzzle(p, dir, s = 1, light = true) {
     this.flash.spawn({ p, s0: 0.9 * s, s1: 1.3 * s, life: 0.05, f0: Math.random() * 4 | 0, em: 2, c: _hot, fin: 0.01 });
     if (light) this.light(p, 160 * s, 0.06, 0xffb070);
@@ -241,5 +244,5 @@ export class FX {
   glowAt(p, s, life, c = _hot, em = 1) { this.glow.spawn({ p, s0: s, s1: s, life, c, em, fin: 0.02 }); }
   clear() { for (const s of [this.exp, this.smoke, this.spl, this.bsp, this.flash, this.glow, this.streak]) { s.free.push(...s.list); s.list.length = 0; s.update?.(0); } this.debris.length = 0; this.craters.clear(); this.bloodD.clear(); }
 }
-const _hot = new THREE.Color(1, 0.75, 0.45), _water = new THREE.Color(0.86, 0.9, 0.92), _mist = new THREE.Color(0.85, 0.88, 0.9), _smokeC = new THREE.Color(0.42, 0.4, 0.38), _dark = new THREE.Color(0.16, 0.15, 0.14), _dust = new THREE.Color(0.78, 0.68, 0.55), _sandSpray = new THREE.Color(0.72, 0.6, 0.45), _spark = new THREE.Color(1, 0.62, 0.25), _tracer = new THREE.Color(1, 0.45, 0.15), _bloodC = new THREE.Color(0.55, 0.05, 0.04), _foam = new THREE.Color(0.95, 0.97, 1);
+const _hot = new THREE.Color(1, 0.75, 0.45), _water = new THREE.Color(0.86, 0.9, 0.92), _mist = new THREE.Color(0.85, 0.88, 0.9), _smokeC = new THREE.Color(0.42, 0.4, 0.38), _dark = new THREE.Color(0.16, 0.15, 0.14), _dust = new THREE.Color(0.78, 0.68, 0.55), _sandSpray = new THREE.Color(0.72, 0.6, 0.45), _spark = new THREE.Color(1, 0.62, 0.25), _tracer = new THREE.Color(1, 0.45, 0.15), _bloodC = new THREE.Color(1.35, 0.32, 0.3), _foam = new THREE.Color(0.95, 0.97, 1);
 export const COLORS = { hot: _hot, spark: _spark, tracer: _tracer, smoke: _smokeC, dark: _dark, foam: _foam };

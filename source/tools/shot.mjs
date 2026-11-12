@@ -60,6 +60,23 @@ const scripts = {
     console.log('lose state', JSON.stringify(await T(() => __T.state())));
   },
   async menu() { await sleep(2500); await shot("menu"); },
+  async gore() {
+    await T(() => { __T.start(1); __T.god(); __T.gun(false); __T.endWave(); __T.spawn('lcvp', 0); __T.spawn('lcvp', 12); for (const e of __T.enemies.list) if (e.type === 'lcvp') e.z = -150; });
+    await T(() => __T.step(12));
+    await T(() => { const ss = __T.enemies.list.filter(e => e.type === 'soldier' && e.alive && e.state !== 'boat'); const p = ss[0].obj.position; __T.cam(p.x + 1.5, p.y + 1.6, p.z + 7); __T.aim(0.12, -0.12); window.__ss = ss; });
+    await sleep(1000);
+    await T(() => { const V = __T.camera.position.constructor; for (const s of __ss.slice(0, 4)) { const q = s.obj.position.clone().add(new V(0, 1.3, 0)); const d = q.clone().sub(__T.camera.position).normalize(); __T.enemies.damage(s, 20, 'mg', q, d); } });
+    await sleep(20); await shot("g_hit");
+    await T(() => { const V = __T.camera.position.constructor; for (const s of __ss.slice(0, 4)) { if (!s.alive) continue; const q = s.obj.position.clone().add(new V(0, 1.3, 0)); const d = q.clone().sub(__T.camera.position).normalize(); __T.enemies.damage(s, 100, 'mg', q, d); } const p = __ss[5].obj.position; __T.explode(p.x + 1, p.z - 1.5, 1.2); });
+    await sleep(250); await shot('g_kill');
+    await T(() => __T.step(3)); await sleep(800); await shot('g_after');
+  },
+  async blood() {
+    await T(() => { __T.start(1); __T.god(); __T.gun(false); __T.endWave(); __T.cam(0, 3, -80); __T.aim(0, -0.1); });
+    await sleep(800);
+    await T(() => { const V = __T.camera.position.constructor; window.__bi = setInterval(() => { __T.fx.bloodHit(new V(-1, 2.5, -88), new V(0.6, 0.2, 0.3).normalize(), 1); __T.fx.bloodPool(1.5, -86, 1); }, 50); });
+    await sleep(1500); await shot('blood'); console.log(await T(() => [__T.fx.blood, __T.fx.bsp.list.length, __T.fx.bloodD ? 'decals' : 'nodecal'].join(' ')));
+  },
   async top() {
     await T(() => { __T.start(1); __T.god(); __T.gun(false); __T.endWave(); __T.cam(0, 50, -80); __T.aim(0, -1.0); }); await sleep(2000); await shot('top');
   },
