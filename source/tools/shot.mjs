@@ -41,6 +41,25 @@ const scripts = {
     await sleep(900); await shot('s_boom2');
     await T(() => { __T.cam(); __T.gun(true); __T.aim(0.05, -0.18); }); await sleep(1500); await shot('s_gun');
   },
+  async flow() {
+    await sleep(1500); await shot('menu');
+    await T(() => { __T.start(2); __T.god(); });
+    for (let w = 1; w <= 10; w++) {
+      await T(() => __T.flush()); await T(() => __T.step(30));
+      const st = await T(() => __T.state());
+      await T(() => __T.killAll()); await T(() => __T.step(4));
+      const st2 = await T(() => __T.state());
+      console.log('wave', w, 'spawned', st.enemies, 'state after kill', st2.state, 'score', st2.score);
+      if (w === 3 || w === 8) await shot('wave' + w + '_sum');
+      if (w < 10) await T(() => __T.next());
+    }
+    await T(() => __T.next()); await sleep(800); await shot('final');
+    console.log('final', await T(() => document.getElementById('sum').innerText.replace(/\s+/g, ' ').slice(0, 300)), 'best', await T(() => localStorage.getItem('qtdl.v1.best')));
+    // lose path
+    await T(() => __T.next()); await sleep(500); await T(() => { __T.god(false); __T.S.hp = 5; __T.flush(); }); await T(() => __T.step(150)); await sleep(800); await shot("lose");
+    console.log('lose state', JSON.stringify(await T(() => __T.state())));
+  },
+  async menu() { await sleep(2500); await shot("menu"); },
   async top() {
     await T(() => { __T.start(1); __T.god(); __T.gun(false); __T.endWave(); __T.cam(0, 50, -80); __T.aim(0, -1.0); }); await sleep(2000); await shot('top');
   },
