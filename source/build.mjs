@@ -41,6 +41,11 @@ for (const [k, s] of Object.entries(M)) {
   if (lodHi(k) === lodLo(k)) add('common', k, 'glb', `${S}/tevy/${s}/${lodHi(k)}.glb`, '模型');
   else { add('hi', k, 'glb', `${S}/tevy/${s}/${lodHi(k)}.glb`, '模型'); add('lo', k, 'glb', `${S}/tevy/${s}/${lodLo(k)}.glb`, '模型'); }
 }
+// CC-BY / CC0 models from the Sketchfab catalogue (mirrored by Objaverse), optimised with gltf-transform
+const X = '/workspace/assets_src/ba/ext';
+add('hi', 'm2', 'glb', `${X}/m2_hi.glb`, '模型'); add('lo', 'm2', 'glb', `${X}/m2_lo.glb`, '模型');
+add('hi', 'arms', 'glb', `${X}/arms_hi.glb`, '模型'); add('lo', 'arms', 'glb', `${X}/arms_lo.glb`, '模型');
+add('common', 'fletcher', 'glb', `${X}/fletcher.glb`, '模型');
 // PBR materials (tevy, CC0)
 const mats = { 'lake-sand': ['2k', '1k', '1k'], 'wet-sand': ['2k', '1k', '1k'], 'mud': ['2k', '1k', null], 'worn-concrete': ['2k', '2k', '1k'], 'granite-rock': ['1k', '1k', null], 'rusty-hull-plate': ['1k', '1k', '1k'], 'rusty-metal': ['1k', '1k', '1k'] };
 for (const [m, res] of Object.entries(mats)) {

@@ -65,6 +65,51 @@ function buildMG(A) {
   g.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = true; } });
   return { g, bar, muzzleLocal: V(0, 0, -1.63) };
 }
+// Browning M2 (CC-BY, britdawgmasterfunk) with gloved first-person arms (CC-BY, bumstrum) gripping the spade grips.
+// Group origin = centre of the spade grips; barrel points down -z.
+const _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _m4 = new THREE.Matrix4();
+function ik2(root, mid, end, target) {
+  // analytic two-bone IK: bend the elbow for the right reach, then swing the shoulder onto the target
+  const S = root.getWorldPosition(V()), E = mid.getWorldPosition(V()), W = end.getWorldPosition(V());
+  const a = S.distanceTo(E), b = E.distanceTo(W), d = Math.min(S.distanceTo(target), (a + b) * 0.995);
+  const cur = _a.copy(S).sub(E).angleTo(_b.copy(W).sub(E)); const want = Math.acos(THREE.MathUtils.clamp((a * a + b * b - d * d) / (2 * a * b), -1, 1));
+  const n = _c.copy(E).sub(S).cross(_d.copy(W).sub(E)); if (n.lengthSq() < 1e-10) n.set(1, 0, 0); n.normalize();
+  mid.getWorldQuaternion(_q); n.applyQuaternion(_q.invert()); mid.quaternion.multiply(_q2.setFromAxisAngle(n, cur - want)); mid.updateMatrixWorld(true);
+  const W2 = end.getWorldPosition(V()); const from = W2.sub(S).normalize(), to = V().copy(target).sub(S).normalize();
+  const dq = new THREE.Quaternion().setFromUnitVectors(from, to); root.getWorldQuaternion(_q); const pw = root.parent.getWorldQuaternion(new THREE.Quaternion());
+  root.quaternion.copy(pw.invert().multiply(dq.multiply(_q))); root.updateMatrixWorld(true);
+}
+function buildM2(A, quality) {
+  const g = new THREE.Group(); const k = 0.0205; const lo = quality === 'low';
+  const m = A.glb.m2.scene; m.scale.setScalar(k); m.position.set(0, -0.5 * k, -20.7 * k); g.add(m);
+  let bar = null;
+  m.traverse((o) => { if (!o.isMesh) return; o.material = o.material.clone(); o.material.color.multiplyScalar(0.62); o.material.metalness = Math.min(o.material.metalness ?? 1, 0.6); o.material.roughness = Math.max(o.material.roughness ?? 0.5, 0.42);
+    o.castShadow = false; o.receiveShadow = true; if (o.parent && /barrel/.test(o.parent.name)) bar = o; });
+  if (!bar) bar = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial());
+  // ammo can + belt on the feed side
+  if (A.glb.ammo) { const can = A.glb.ammo.scene.clone(); can.scale.setScalar(1.0); can.position.set(-0.23, -0.3, -0.5); can.rotation.y = Math.PI / 2; g.add(can); }
+  const brass = new THREE.MeshStandardMaterial({ color: 0xb08a3a, roughness: 0.35, metalness: 0.9 });
+  for (let i = 0; i < 8; i++) { const t = i / 7; const o = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.075, 6), brass); o.position.set(-0.2 + t * 0.12, -0.12 + Math.sin(t * Math.PI) * 0.04 + t * 0.1, -0.42); o.rotation.set(0, 0, Math.PI / 2); g.add(o); }
+  // arms
+  if (A.glb.arms) {
+    const arms = A.glb.arms.scene; const ka = 0.0118; arms.scale.setScalar(ka); arms.rotation.y = Math.PI; arms.position.set(0, -0.15, 0.3); g.add(arms);
+    const B = {}; arms.traverse((o) => { if (o.isBone) B[o.name.replace(/_\d+$/, '')] = o; if (o.isMesh) { o.frustumCulled = false; o.castShadow = false; o.material.color?.multiplyScalar(0.9); } });
+    g.updateMatrixWorld(true);
+    const gx = 3.9 * k * 0.92;
+    for (const [side, sx] of [['L', 1], ['R', -1]]) {
+      // the rig's L arm sits at +x before the 180° turn, i.e. on screen right after it; grip x = -sx * ...
+      const up = B[side + '_arm'], el = B[side + '_elbow'], wr = B[side + '_wrist']; if (!up || !el || !wr) continue;
+      const tgt = g.localToWorld(V(side === 'L' ? -gx : gx, -0.035, 0.075));
+      ik2(up, el, wr, tgt);
+      // palm in, thumb up, fingers wrapped round the grip
+      wr.rotateZ(sx * 1.25); wr.rotateX(0.25); wr.updateMatrixWorld(true);
+      for (const f of ['point', 'middle', 'ring', 'pink']) for (let j = 1; j <= 3; j++) { const b = B[side + '_' + f + j]; if (b) b.rotateX(j === 1 ? 0.9 : 1.1); }
+      for (let j = 2; j <= 3; j++) { const b = B[side + '_thumb' + j]; if (b) b.rotateX(0.4); }
+    }
+    g.userData.B = B;
+  }
+  return { g, bar, muzzleLocal: V(0, 0.01, -1.6), m2: true };
+}
 // keep the triangles of one glove of the pair (split on the bounding-box centre x)
 function splitGlove(geo, left) {
   geo.computeBoundingBox(); const cx = (geo.boundingBox.min.x + geo.boundingBox.max.x) / 2;
@@ -86,7 +131,7 @@ function buildLauncher() {
 export class Weapons {
   constructor(G, camera) {
     this.G = G; this.cam = camera; this.cur = 0; this.heat = 0; this.over = false; this.cd = 0; this.reload = [0, 0, 0]; this.reloadT = [0.09, 2.1, 3.4];
-    this.mg = buildMG(G.A); this.mg.g.scale.setScalar(0.72); camera.add(this.mg.g);
+    this.mg = G.A.glb.m2 ? buildM2(G.A, G.quality) : buildMG(G.A); if (!this.mg.m2) this.mg.g.scale.setScalar(0.72); camera.add(this.mg.g); this.mgBase = [0.0, -0.285, -0.82];
     this.ml = buildLauncher(); this.ml.g.position.set(0.24, -0.2, -0.28); camera.add(this.ml.g); this.ml.g.visible = false;
     this.kick = 0; this.shells = []; this.missiles = []; this.lock = null; this.lockT = 0; this.shots = 0; this.hits = 0;
     this.switchT = 0;
@@ -120,7 +165,7 @@ export class Weapons {
     const zoom = G.zoomK || 0; const sw = this.switchT / 0.35;
     this.mg.g.visible = !this.hideGun && (w === 0 || w === 1); this.ml.g.visible = !this.hideGun && w === 2;
     const mgDown = w === 1 ? 0.55 : 0;
-    this.mg.g.position.set(0.0 + rr(-1, 1) * this.kick * 0.004, -0.25 - mgDown - sw * 0.3 + zoom * 0.08, -0.3 + this.kick * 0.035 - zoom * 0.05);
+    const BP = this.mg.m2 ? this.mgBase : [0, -0.25, -0.3]; this.mg.g.position.set(BP[0] + rr(-1, 1) * this.kick * 0.004, BP[1] - mgDown - sw * 0.3 + zoom * 0.08, BP[2] + this.kick * 0.035 - zoom * 0.05);
     this.mg.g.rotation.set(0.03 + this.kick * 0.02 - zoom * 0.03, 0, 0);
     this.ml.g.position.set(0.24 - zoom * 0.1, -0.2 - sw * 0.3 + zoom * 0.05, -0.28 + this.kick * 0.05);
     const glow = Math.max(0, this.heat - 0.45) / 0.55; this.mg.bar.material.emissive = this.mg.bar.material.emissive || new THREE.Color(); this.mg.bar.material.emissive.setRGB(glow * 0.9, glow * 0.18, 0);

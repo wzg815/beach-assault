@@ -112,6 +112,7 @@ const scripts = {
     await T(() => __T.step(1.5)); await T(() => { __T.cam(1, 4.0, -26); __T.aim(0, -0.22); }); await sleep(1500); await shot('p_pose');
     await T(() => { __T.cam(-20, 14, -10); __T.aim(0, -0.42); }); await sleep(1500); await shot('p_sand');
     await T(() => { __T.cam(0, 3, -60); __T.aim(Math.PI * 0.0 + 0.0, -0.05); }); await sleep(1500); await shot('p_sea');
+    await T(() => { __T.cam(-300, 12, -640); __T.aim(0.36, -0.02); }); await sleep(1500); await shot('p_ship');
   },
   async pose() {
     await T(() => { __T.start(1); __T.god(); __T.gun(false); __T.endWave(); __T.spawn('lcvp', 0); __T.spawn('lcvp', 12); for (const e of __T.enemies.list) if (e.type === 'lcvp') e.z = -150; });

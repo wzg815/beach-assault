@@ -74,6 +74,9 @@ function setupScene() {
   sun.castShadow = true; const sm = G.quality === 'high' ? 2048 : G.quality === 'mid' ? 1536 : 1024; sun.shadow.mapSize.set(sm, sm);
   const sc = sun.shadow.camera; sc.left = -150; sc.right = 150; sc.top = 130; sc.bottom = -130; sc.near = 10; sc.far = 800; sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.6;
   const amb = new THREE.HemisphereLight(0x9aa6b8, 0x5a4a3a, 0.35); scene.add(amb);
+  // landward sky fill: the sun sits over the sea, so troops running at the gun face away from it.
+  // A soft cool light from behind the bunker keeps their fronts readable instead of black cut-outs.
+  const fill = new THREE.DirectionalLight(0xc2cbd8, 1.0); fill.position.set(-25, 45, 100); fill.target.position.set(0, 0, -40); scene.add(fill, fill.target);
   if (A.env) { const pm = new THREE.PMREMGenerator(renderer); const env = pm.fromEquirectangular(A.env).texture; scene.environment = env; scene.environmentIntensity = 0.55; scene.environmentRotation = new THREE.Euler(0, -SKY.rot, 0); pm.dispose(); }
   world = buildWorld(A, scene, G.quality, hz); G.world = world;
   const ht = makeHeightTex(G.quality === 'low' ? 384 : 640);

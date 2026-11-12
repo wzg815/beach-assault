@@ -1,4 +1,8 @@
-# Upgrade assets: login required (Sketchfab, CC-BY / CC-BY-SA)
+# Upgrade assets
+
+Already integrated, from the Objaverse mirror with no login needed: the M2 (cbd897c1…), the gloved arms (e3c42c05…) and the Fletcher destroyer (5cddc330…).
+
+## Still login-gated (Sketchfab, CC-BY / CC-BY-SA)
 
 Sketchfab requires a signed-in account (or API token) to download any model, so these were **not** fetched.
 Download as glTF/GLB into `/workspace/assets_src/ext/<key>.glb`; credit lines go into CREDITS.md.

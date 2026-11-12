@@ -157,10 +157,19 @@ export function makeLCVP(mats) {
 }
 
 // Distant warships on the horizon (pure silhouettes in the haze) with occasional gun flashes.
-function fleet(horizon) {
+function fleet(horizon, GL) {
   const g = new THREE.Group(); const flashes = [];
   const mat = new THREE.MeshBasicMaterial({ color: horizon.clone().multiplyScalar(0.42), fog: false });
-  const mk = (len) => {
+  // Fletcher-class destroyer model (CC-BY, hellomynameis.jeffz): hazy silhouettes far out, painted hull closer in
+  const navy = new THREE.MeshStandardMaterial({ color: 0x4a5058, roughness: 0.7, metalness: 0.3 }), deck = new THREE.MeshStandardMaterial({ color: 0x33373a, roughness: 0.85 }), boot = new THREE.MeshStandardMaterial({ color: 0x2a2624, roughness: 0.8 });
+  const mkF = (len, painted) => {
+    const s = new THREE.Group(); const m = GL.fletcher.scene.clone(true); const k = len / 10.05;
+    m.scale.setScalar(k); m.rotation.y = -Math.PI / 2; m.position.y = -0.25 * k; s.add(m);
+    m.traverse((o) => { if (!o.isMesh) return; if (!painted) { o.material = mat; return; } const c = o.material.color || new THREE.Color(1, 1, 1); o.material = c.r > c.g * 1.4 ? boot : (c.r + c.g + c.b < 1.2 ? deck : navy); o.castShadow = false; });
+    return s;
+  };
+  const mk = (len, painted) => GL.fletcher ? mkF(len, painted) : mkBox(len);
+  const mkBox = (len) => {
     const s = new THREE.Group();
     const hull = new THREE.BoxGeometry(len * 0.11, len * 0.06, len); const hp = hull.attributes.position;
     for (let i = 0; i < hp.count; i++) { const z = hp.getZ(i) / len; if (z > 0.3) hp.setX(i, hp.getX(i) * (1 - (z - 0.3) * 1.6)); }
@@ -175,7 +184,7 @@ function fleet(horizon) {
   const ships = [[-900, -2600, 130, 0.3], [-300, -3100, 180, -0.2], [500, -2800, 150, 0.4], [1300, -3300, 200, 0.1], [-1700, -3400, 160, -0.3], [2100, -3900, 210, 0.2], [80, -4200, 240, 0]];
   for (const [x, z, l, r] of ships) { const s = mk(l); s.position.set(x, 0, z); s.rotation.y = Math.PI / 2 + r; g.add(s); flashes.push(new THREE.Vector3(x, l * 0.06, z)); }
   // a stricken destroyer burning closer in, drifting smoke across the horizon
-  const burning = []; { const b = mk(120); b.position.set(-420, -2, -950); b.rotation.set(0.05, Math.PI / 2 + 0.7, 0.09); g.add(b); burning.push(new THREE.Vector3(-420, 6, -950), new THREE.Vector3(-395, 4, -935)); }
+  const burning = []; { const b = mk(115, true); b.position.set(-420, -1, -950); b.rotation.set(0.05, Math.PI / 2 + 0.7, 0.09); g.add(b); burning.push(new THREE.Vector3(-420, 6, -950), new THREE.Vector3(-395, 4, -935)); }
   return { group: g, flashes, burning };
 }
 
@@ -212,7 +221,7 @@ function buildParapet(A, G, P, add, quality) {
   const mud = pbr(A, 'mud'); mud.color = new THREE.Color(1.15, 1.0, 0.8); mud.roughness = 1;
   const dg = new THREE.SphereGeometry(1, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2);
   for (const [x, z, sx, sz, sy] of [[-4.2, -1.75, 1.3, 0.55, 0.16], [-1.6, -1.9, 0.7, 0.35, 0.09], [2.2, -1.8, 1.0, 0.45, 0.12], [4.6, -1.7, 0.9, 0.5, 0.2], [0.9, -2.25, 0.8, 0.3, 0.07]]) {
-    const m = mk(dg, x, top - 0.03, z, 0, rnd() * 3, 0, mud); m.scale.set(sx, sy, sz);
+    if (sx > 0) continue; const m = mk(dg, x, top - 0.03, z, 0, rnd() * 3, 0, mud); m.scale.set(sx, sy * 0.7, sz);
   }
   // spent brass and links piled on the parapet top and the pit floor
   const brass = new THREE.MeshStandardMaterial({ color: 0xb08a48, metalness: 0.85, roughness: 0.32 });
@@ -295,7 +304,7 @@ export function buildWorld(A, scene, quality, horizon) {
   if (G.seastack) { const ms = [new THREE.Matrix4().compose(new THREE.Vector3(-310, -8, -380), new THREE.Quaternion(), new THREE.Vector3(1.8, 2.0, 1.8)), new THREE.Matrix4().compose(new THREE.Vector3(-345, -8, -330), new THREE.Quaternion().setFromAxisAngle(_up, 1.2), new THREE.Vector3(1.2, 1.3, 1.2)), new THREE.Matrix4().compose(new THREE.Vector3(330, -8, -400), new THREE.Quaternion().setFromAxisAngle(_up, 2.2), new THREE.Vector3(1.6, 1.7, 1.6))]; add(instanceModel(G.seastack, ms, false)); }
   if (G.lighthouse) { const o = shadowAll(G.lighthouse.scene.clone(), false, true); placeObj(o, 318, -150, -2.2, 1.1, -1.5); add(o); }
   // horizon fleet
-  const F = fleet(horizon); add(F.group); W.fleet = F;
+  const F = fleet(horizon, G); add(F.group); W.fleet = F;
   W.rnd = rnd;
   buildTufts(G, add, quality, mulberry(7));
   return W;

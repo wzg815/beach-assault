@@ -154,7 +154,7 @@ export class FX {
     scene.add(this.streak.mesh, this.craters.mesh, this.bloodD.mesh, this.prints.mesh);
     // debris chunks
     const dg = new THREE.DodecahedronGeometry(0.22, 0); this.debMax = lo ? 80 : 180;
-    this.deb = new THREE.InstancedMesh(dg, new THREE.MeshStandardMaterial({ color: 0x4b4136, roughness: 0.95 }), this.debMax); this.deb.count = 0; this.deb.castShadow = !lo; this.deb.frustumCulled = false; scene.add(this.deb);
+    this.deb = new THREE.InstancedMesh(dg, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95 }), this.debMax); this.debCol = new THREE.Color(0x4b4136); for (let i = 0; i < this.debMax; i++) this.deb.setColorAt(i, this.debCol); this.deb.count = 0; this.deb.castShadow = !lo; this.deb.frustumCulled = false; scene.add(this.deb);
     this.debris = [];
     // light pool
     this.lights = []; for (let i = 0; i < (lo ? 2 : 4); i++) { const l = new THREE.PointLight(0xffa860, 0, 90, 1.7); scene.add(l); this.lights.push({ l, t: 0, d: 1, i0: 0 }); }
@@ -179,9 +179,9 @@ export class FX {
     for (let i = 0; i < this.debris.length; i++) {
       const d = this.debris[i]; d.age += dt; if (d.age > d.life) { this.debris.splice(i, 1); i--; continue; }
       if (!d.rest) { d.v.y -= 9.8 * dt; d.p.addScaledVector(d.v, dt); d.r.x += d.w.x * dt; d.r.y += d.w.y * dt; const h = heightAt(d.p.x, d.p.z); if (d.p.y < Math.max(h, d.water ? -0.6 : -99)) { if (h < 0) { d.age = d.life; } d.p.y = h + 0.05; if (d.v.y < -3) { d.v.y *= -0.3; d.v.x *= 0.5; d.v.z *= 0.5; } else { d.rest = true; } } if (d.trail && Math.random() < dt * 30) this.smoke.spawn({ p: d.p, s0: 0.6 * d.s, s1: 2.5 * d.s, life: 1.4, a: 0.5, c: _dark, f0: Math.random() * 16 | 0, v: _a.set(0, 0.8, 0) }); }
-      if (n < this.debMax) { q.setFromEuler(new THREE.Euler(d.r.x, d.r.y, 0)); const f = d.age > d.life - 1 ? d.life - d.age : 1; m.compose(d.p, q, sc.setScalar(d.s * Math.max(0.01, f))); this.deb.setMatrixAt(n++, m); }
+      if (n < this.debMax) { q.setFromEuler(new THREE.Euler(d.r.x, d.r.y, 0)); const f = d.age > d.life - 1 ? d.life - d.age : 1; this.deb.setColorAt(n, d.col || this.debCol); m.compose(d.p, q, sc.setScalar(d.s * Math.max(0.01, f))); this.deb.setMatrixAt(n++, m); }
     }
-    this.deb.count = n; this.deb.instanceMatrix.needsUpdate = true;
+    this.deb.count = n; this.deb.instanceMatrix.needsUpdate = true; if (this.deb.instanceColor) this.deb.instanceColor.needsUpdate = true;
   }
   // ------------------------------------------------------------------ emitters
   explosion(p, s = 1, o = {}) {
@@ -223,7 +223,7 @@ export class FX {
       this.flash.spawn({ p, s0: 0.25, s1: 0.45, life: 0.05, f0: Math.random() * 4 | 0, em: 1, c: _spark });
       this.smoke.spawn({ p: _a.copy(p), s0: 0.15, s1: rr(0.7, 1.1), life: rr(0.5, 0.9), a: 0.7, c: _concD, f0: Math.random() * 16 | 0, v: _b.set(rr(-0.4, 0.4), rr(0.8, 1.6), rr(0.2, 1.2)), drag: 3 });
       this.smoke.spawn({ p: _a.copy(p), s0: 0.3, s1: rr(1.2, 1.8), life: rr(1.2, 2), a: 0.25, c: _dust, f0: Math.random() * 16 | 0, v: _b.set(0, 0.4, 0.3), drag: 1 });
-      if (this.debris.length < this.debMax - 4) for (let i = 0; i < 2; i++) this.debris.push({ p: p.clone(), v: new THREE.Vector3(rr(-1.5, 1.5), rr(1.5, 3.5), rr(0, 2.5)), r: new THREE.Vector3(rr(0, 6), rr(0, 6), 0), w: new THREE.Vector3(rr(-9, 9), rr(-9, 9), 0), s: rr(0.1, 0.2), age: 0, life: 2 });
+      if (this.debris.length < this.debMax - 4) for (let i = 0; i < 3; i++) this.debris.push({ p: p.clone(), v: new THREE.Vector3(rr(-1.5, 1.5), rr(1.5, 3.5), rr(0, 2.5)), r: new THREE.Vector3(rr(0, 6), rr(0, 6), 0), w: new THREE.Vector3(rr(-9, 9), rr(-9, 9), 0), s: rr(0.035, 0.07), age: 0, life: 1.6, col: _concD });
       return;
     }
     if (kind === 'sand') {
