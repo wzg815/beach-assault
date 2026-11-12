@@ -66,8 +66,8 @@ function terrainMaterial(A) {
       float wGrass = smoothstep(5.0, 7.6, hgt + nz * 2.0) * (1.0 - smoothstep(0.22, 0.42, slope));
       float wRock = smoothstep(0.42, 0.62, slope + nz * 0.15) + smoothstep(18.0, 24.0, hgt) * smoothstep(190.0, 240.0, abs(vWP.x));
       wRock = clamp(wRock, 0.0, 1.0);
-      vec3 col = cD.rgb * vec3(0.86, 0.8, 0.7); vec3 tn = nD; float rgh = oD.g; float ao = oD.r;
-      col = mix(col, cW.rgb * 0.82, wWet); tn = mix(tn, nW, wWet); rgh = mix(rgh, oW.g * 0.55, wWet); ao = mix(ao, oW.r, wWet);
+      vec3 col = cD.rgb * vec3(0.7, 0.64, 0.55); vec3 tn = nD; float rgh = oD.g; float ao = oD.r;
+      col = mix(col, cW.rgb * 0.62, wWet); tn = mix(tn, nW, wWet); rgh = mix(rgh, oW.g * 0.55, wWet); ao = mix(ao, oW.r, wWet);
       wGrass *= smoothstep(0.15, 0.6, mac + nz * 0.8) * 0.9; col = mix(col, cG.rgb * vec3(0.82, 0.76, 0.66), wGrass); tn = mix(tn, nG, wGrass); rgh = mix(rgh, 0.95, wGrass);
       col = mix(col, cR.rgb, wRock); tn = mix(tn, nR, wRock); rgh = mix(rgh, 0.85, wRock);
       col *= 0.8 + 0.4 * mac;
@@ -170,7 +170,9 @@ function fleet(horizon) {
   };
   const ships = [[-900, -2600, 130, 0.3], [-300, -3100, 180, -0.2], [500, -2800, 150, 0.4], [1300, -3300, 200, 0.1], [-1700, -3400, 160, -0.3], [2100, -3900, 210, 0.2], [80, -4200, 240, 0]];
   for (const [x, z, l, r] of ships) { const s = mk(l); s.position.set(x, 0, z); s.rotation.y = Math.PI / 2 + r; g.add(s); flashes.push(new THREE.Vector3(x, l * 0.06, z)); }
-  return { group: g, flashes };
+  // a stricken destroyer burning closer in, drifting smoke across the horizon
+  const burning = []; { const b = mk(120); b.position.set(-420, -2, -950); b.rotation.set(0.05, Math.PI / 2 + 0.7, 0.09); g.add(b); burning.push(new THREE.Vector3(-420, 6, -950), new THREE.Vector3(-395, 4, -935)); }
+  return { group: g, flashes, burning };
 }
 
 // Box with UVs scaled to metres so tiling PBR textures keep a constant texel density.

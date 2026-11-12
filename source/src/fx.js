@@ -188,15 +188,15 @@ export class FX {
     this.light(_a.copy(p).setY(p.y + 2 * s), 1800 * s * s, 0.35 + 0.15 * s);
     this.flash.spawn({ p: _a.copy(p).setY(p.y + 1.2 * s), s0: 9 * s, s1: 14 * s, life: 0.16, f0: Math.random() * 4 | 0, em: 2.5, c: _hot, fin: 0.05 });
     if (water) {
-      for (let i = 0; i < 3 + 3 * k; i++) this.spl.spawn({ p: _a.copy(p).setY(-0.5).add(_b.set(rr(-1.5, 1.5) * s, 0, rr(-1.5, 1.5) * s)), s0: 5 * s, s1: rr(14, 22) * s, life: rr(1.6, 2.6), f0: Math.random() * 4 | 0, v: _b.set(0, rr(5, 9) * s, 0), grav: 4.5, rot: rr(-0.15, 0.15), fin: 0.05, ease: 3, c: _water });
+      for (let i = 0; i < 4 + 4 * k; i++) this.spl.spawn({ p: _a.copy(p).setY(-0.5).add(_b.set(rr(-1.8, 1.8) * s, 0, rr(-1.8, 1.8) * s)), s0: 5 * s, s1: rr(20, 32) * s, life: rr(2.2, 3.2), f0: Math.random() * 4 | 0, v: _b.set(0, rr(7, 12) * s, 0), grav: 4.5, rot: rr(-0.15, 0.15), fin: 0.05, ease: 3, c: _water });
       for (let i = 0; i < 8 * k; i++) this.smoke.spawn({ p: _a.copy(p).setY(0.6), v: _b.set(rr(-5, 5), rr(0.5, 3), rr(-5, 5)).multiplyScalar(s), s0: 3 * s, s1: 11 * s, life: rr(2.5, 4), a: 0.5, drag: 1.2, c: _mist, f0: Math.random() * 16 | 0 });
       this.exp.spawn({ p: _a.copy(p).setY(1.5 * s), s0: 6 * s, s1: 11 * s, life: 0.6, f0: 0, nf: 24, em: 1.4, rv: rr(-0.3, 0.3) });
       return;
     }
-    const n = Math.round((o.big ? 4 : 2) * (0.6 + 0.4 * k));
-    for (let i = 0; i < n; i++) this.exp.spawn({ p: _a.copy(p).add(_b.set(rr(-1, 1) * s, rr(0.6, 1.8) * s, rr(-1, 1) * s)), s0: rr(5, 7) * s, s1: rr(10, 15) * s, life: rr(0.9, 1.4), f0: 0, nf: 56, em: 1.6, rv: rr(-0.4, 0.4), ease: 2.5, fin: 0.03 });
+    const n = Math.round((o.big ? 6 : 3) * (0.6 + 0.4 * k));
+    for (let i = 0; i < n; i++) this.exp.spawn({ p: _a.copy(p).add(_b.set(rr(-1, 1) * s, rr(0.6, 1.8) * s, rr(-1, 1) * s)), s0: rr(6, 9) * s, s1: rr(14, 21) * s, life: rr(1.0, 1.6), f0: 0, nf: 56, em: 1.6, rv: rr(-0.4, 0.4), ease: 2.5, fin: 0.03 });
     // dark smoke column + dust skirt
-    for (let i = 0; i < 10 * k * s + 3; i++) this.smoke.spawn({ p: _a.copy(p).add(_b.set(rr(-2, 2) * s, rr(0.5, 3) * s, rr(-2, 2) * s)), v: _b.set(rr(-1.5, 1.5), rr(2.5, 7), rr(-1.5, 1.5)).multiplyScalar(s), s0: rr(3, 5) * s, s1: rr(11, 18) * s, life: rr(4, 8), a: rr(0.55, 0.85), drag: 0.6, c: o.oil ? _dark : _smokeC, f0: Math.random() * 16 | 0, rv: rr(-0.2, 0.2), fin: 0.05 });
+    for (let i = 0; i < 10 * k * s + 3; i++) this.smoke.spawn({ p: _a.copy(p).add(_b.set(rr(-2, 2) * s, rr(0.5, 3) * s, rr(-2, 2) * s)), v: _b.set(rr(-1.5, 1.5), rr(2.5, 7), rr(-1.5, 1.5)).multiplyScalar(s), s0: rr(3, 5) * s, s1: rr(14, 24) * s, life: rr(7, 13), a: rr(0.55, 0.85), drag: 0.5, c: o.oil ? _dark : _smokeC, f0: Math.random() * 16 | 0, rv: rr(-0.2, 0.2), fin: 0.05 });
     for (let i = 0; i < 9 * k * s + 2; i++) { const a = Math.random() * 6.28; this.smoke.spawn({ p: _a.copy(p).add(_b.set(0, 0.6, 0)), v: _b.set(Math.cos(a) * rr(6, 14), rr(0.2, 1.5), Math.sin(a) * rr(6, 14)).multiplyScalar(s), s0: 2.5 * s, s1: rr(7, 11) * s, life: rr(2.5, 4.5), a: 0.6, drag: 2.2, c: _dust, f0: Math.random() * 16 | 0, fin: 0.04 }); }
     // sand fountain
     for (let i = 0; i < 6 * k + 2; i++) this.spl.spawn({ p: _a.copy(p), v: _b.set(rr(-3, 3), rr(9, 16), rr(-3, 3)).multiplyScalar(Math.sqrt(s)), s0: 3 * s, s1: rr(8, 12) * s, life: rr(1.1, 1.8), grav: 9, f0: Math.random() * 4 | 0, c: _sandSpray, rot: rr(-0.4, 0.4), ease: 2 });
