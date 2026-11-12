@@ -1,5 +1,5 @@
 {
-  "name": "teen_fps_2026-11-12",
+  "name": "beach-assault",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -12,6 +12,7 @@
   "dependencies": {
     "esbuild": "^0.28.2",
     "playwright": "^1.64.0",
-    "three": "^0.169.0"
-  }
+    "three": "0.169.0"
+  },
+  "type": "module"
 }

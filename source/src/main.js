@@ -286,6 +286,9 @@ function update(dt) {
   if (world.howitzer) { const H = world.howitzer; const want = Math.PI + yaw * 0.9; H.rotation.y += (want - H.rotation.y) * Math.min(1, dt * 2); if (world.howBarrel) world.howBarrel.rotation.x = -clamp(0.08 + pitch * 0.6, -0.05, 0.6); }
   fx.update(dt, camera.position);
   // ambience: naval guns flashing on the horizon, distant thunder of the barrage
+  // burning wrecks set the mood: thick dark smoke columns drifting along the beach
+  if (!G.fires) G.fires = [[-48, -44, 1.0], [95, -150, 1.6], [-150, -200, 1.8], [40, -320, 2.2]].map(([x, z, s]) => ({ p: new THREE.Vector3(x, Math.max(0, heightAt(x, z)) + 0.5, z), s }));
+  for (const f of G.fires) if (Math.random() < dt * (G.quality === 'low' ? 2.5 : 5)) fx.burn(f.p, f.s);
   ambT -= dt; if (ambT <= 0) { ambT = rr(1.5, 4.5); const f = world.fleet.flashes[Math.floor(Math.random() * world.fleet.flashes.length)]; fx.glowAt(f.clone().add(_v.set(rr(-40, 40), rr(5, 15), 0)), rr(25, 45), 0.18, fx.glow ? undefined : undefined, 3); setTimeout(() => audio.distant(), 2000 + Math.random() * 3000);
     if (G.state !== 'menu' && Math.random() < 0.25) { const x = rr(-200, 200), z = rr(-260, -150); G.explode(_w.set(x, 0, z), rr(1.2, 1.8), { water: true }); } }
   // hud
