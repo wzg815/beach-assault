@@ -163,7 +163,7 @@ export function buildWorld(A, scene, quality, horizon) {
   const add = (o) => { scene.add(o); return o; };
   // --- player emplacement ---
   const P = PLAYER;
-  if (G.sb_pos) { const o = shadowAll(G.sb_pos.scene.clone()); placeObj(o, P.x, P.z - 1.1, Math.PI, 1.6, -0.95); add(o); }
+  if (G.sb_pos) { const o = shadowAll(G.sb_pos.scene.clone()); placeObj(o, P.x, P.z - 1.3, Math.PI, 1.6, -1.25); add(o); }
   if (G.sb_curve) { for (const [dx, dz, r] of [[-3.4, 0.6, 0.5], [3.4, 0.6, -0.5 + Math.PI]]) { const o = shadowAll(G.sb_curve.scene.clone()); placeObj(o, P.x + dx, P.z + dz, r, 1, -0.05); add(o); } }
   if (G.camonet) { const o = shadowAll(G.camonet.scene.clone(), true, true); placeObj(o, P.x + 0.5, P.z + 4.2, 0.1, 1.15, -0.1); add(o); }
   if (G.ammo) { const ms = []; for (const [dx, dz, r] of [[1.6, 1.6, 0.3], [1.95, 1.4, 0.1], [1.75, 1.9, 1.7], [-1.7, 1.8, -0.4], [-1.5, 2.2, 2.0]]) ms.push(place(P.x + dx, P.z + dz, r, 1.2)); add(instanceModel(G.ammo, ms)); }

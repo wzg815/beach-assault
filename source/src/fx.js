@@ -218,8 +218,8 @@ export class FX {
     if (kind === 'water') return this.splash(p, rr(0.45, 0.7));
     if (kind === 'metal') { for (let i = 0; i < 5; i++) this.streak.spawn({ p, v: _b.set(rr(-1, 1), rr(0, 1.2), rr(-1, 1)).normalize().multiplyScalar(rr(8, 20)), len: 0.5, w: 0.06, life: rr(0.2, 0.45), c: _spark, grav: 9.8 }); this.flash.spawn({ p, s0: 0.9, s1: 1.4, life: 0.06, f0: Math.random() * 4 | 0, em: 1, c: _spark }); this.smoke.spawn({ p, s0: 0.5, s1: 1.6, life: 0.8, a: 0.35, c: _smokeC, f0: Math.random() * 16 | 0 }); return; }
     if (kind === 'sand') {
-      this.spl.spawn({ p: _a.copy(p), s0: 0.5, s1: rr(1.4, 2.2), life: rr(0.5, 0.8), v: _b.set(0, rr(1.5, 3), 0), grav: 6, f0: Math.random() * 4 | 0, c: _sandSpray, rot: rr(-0.4, 0.4) });
-      this.smoke.spawn({ p: _a.copy(p).setY(p.y + 0.2), s0: 0.5, s1: rr(1.6, 2.6), life: rr(1, 1.6), a: 0.45, c: _dust, f0: Math.random() * 16 | 0, v: _b.set(rr(-0.3, 0.3), 0.4, rr(-0.3, 0.3)), drag: 1 });
+      this.smoke.spawn({ p: _a.copy(p).setY(p.y + 0.15), s0: 0.3, s1: rr(1.0, 1.4), life: rr(0.3, 0.45), a: 0.75, c: _sandSpray, f0: Math.random() * 16 | 0, v: _b.set(rr(-0.5, 0.5), rr(1.2, 2.2), rr(-0.5, 0.5)), drag: 3 });
+      this.smoke.spawn({ p: _a.copy(p).setY(p.y + 0.2), s0: 0.5, s1: rr(1.6, 2.4), life: rr(1, 1.6), a: 0.3, c: _dust, f0: Math.random() * 16 | 0, v: _b.set(rr(-0.3, 0.3), 0.4, rr(-0.3, 0.3)), drag: 1 });
     }
   }
   bloodHit(p, dir, s = 1) {

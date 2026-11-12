@@ -77,6 +77,15 @@ const scripts = {
     await T(() => { const V = __T.camera.position.constructor; window.__bi = setInterval(() => { __T.fx.bloodHit(new V(-1, 2.5, -88), new V(0.6, 0.2, 0.3).normalize(), 1); __T.fx.bloodPool(1.5, -86, 1); }, 50); });
     await sleep(1500); await shot('blood'); console.log(await T(() => [__T.fx.blood, __T.fx.bsp.list.length, __T.fx.bloodD ? 'decals' : 'nodecal'].join(' ')));
   },
+  async battle() {
+    await T(() => { __T.start(1); __T.god(); __T.endWave(); for (const x of [-60, -25, 10, 45, 80]) __T.spawn('lcvp', x); __T.spawn('rib', -95); __T.spawn('tank', -40); __T.spawn('ifv', 30); __T.spawn('heli'); __T.spawn('gunship');
+      for (const e of __T.enemies.list) if (e.z !== undefined) e.z = Math.max(e.z, -200); });
+    await T(() => __T.step(30));
+    await T(() => { __T.aim(0.06, -0.17); __T.fire(true); }); await sleep(2500);
+    await T(() => { __T.explode(-30, -95, 1.8); __T.explode(25, -70, 1.5); __T.explode(60, -120, 2); }); await sleep(600); await shot('b_mg');
+    await T(() => __T.fire(false)); await T(() => __T.weapon(1)); await T(() => __T.zoom(true)); await sleep(1500); await shot('b_zoom'); await T(() => __T.zoom(false));
+    await T(() => { __T.weapon(2); __T.aim(0.25, 0.08); }); await sleep(1500); await shot('b_aa');
+  },
   async top() {
     await T(() => { __T.start(1); __T.god(); __T.gun(false); __T.endWave(); __T.cam(0, 50, -80); __T.aim(0, -1.0); }); await sleep(2000); await shot('top');
   },
