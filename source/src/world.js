@@ -66,16 +66,20 @@ function terrainMaterial(A) {
       float wGrass = smoothstep(5.0, 7.6, hgt + nz * 2.0) * (1.0 - smoothstep(0.22, 0.42, slope));
       float wRock = smoothstep(0.42, 0.62, slope + nz * 0.15) + smoothstep(18.0, 24.0, hgt) * smoothstep(190.0, 240.0, abs(vWP.x));
       wRock = clamp(wRock, 0.0, 1.0);
-      vec3 col = cD.rgb * vec3(0.7, 0.64, 0.55); vec3 tn = nD; float rgh = oD.g; float ao = oD.r;
-      col = mix(col, cW.rgb * 0.62, wWet); tn = mix(tn, nW, wWet); rgh = mix(rgh, oW.g * 0.55, wWet); ao = mix(ao, oW.r, wWet);
+      vec3 col = cD.rgb * vec3(0.76, 0.68, 0.57); vec3 tn = nD; float rgh = oD.g; float ao = oD.r;
+      col = mix(col, cW.rgb * 0.78, wWet); tn = mix(tn, nW, wWet); rgh = mix(rgh, max(0.56, oW.g * 0.8), wWet); ao = mix(ao, oW.r, wWet);
       wGrass *= smoothstep(0.15, 0.6, mac + nz * 0.8) * 0.9; col = mix(col, cG.rgb * vec3(0.82, 0.76, 0.66), wGrass); tn = mix(tn, nG, wGrass); rgh = mix(rgh, 0.95, wGrass);
       col = mix(col, cR.rgb, wRock); tn = mix(tn, nR, wRock); rgh = mix(rgh, 0.85, wRock);
       col *= 0.8 + 0.4 * mac;
+      // saturated swash zone: dark band at the waterline with a few receding swash lines
+      float sw = (1.0 - smoothstep(-0.2, 0.9, hgt + nz * 0.5)) * smoothstep(-1.2, -0.3, hgt);
+      float lines = smoothstep(0.75, 1.0, sin(hgt * 18.0 + vWP.x * 0.05 + nz * 6.0)) * (1.0 - smoothstep(0.2, 1.3, hgt));
+      col *= 1.0 - 0.4 * sw - 0.15 * lines; rgh = mix(rgh, 0.5, sw);
       float uw = smoothstep(0.0, -5.0, hgt);
       col = mix(col, col * vec3(0.35, 0.55, 0.55), uw);
       diffuseColor.rgb *= col; gTN = tn * 2.0 - 1.0; gRough = rgh; gAO = ao;
       diffuseColor.rgb *= mix(1.0, gAO, 0.7);`)
-      .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = clamp(gRough, 0.5, 1.0);')
+      .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = clamp(gRough, 0.48, 1.0);')
       .replace('#include <metalnessmap_fragment>', 'float metalnessFactor = 0.0;')
       .replace('#include <normal_fragment_maps>', `{
         vec3 Nw = normalize(vWN); vec3 T = normalize(vec3(1.0, 0.0, 0.0) - Nw * Nw.x); vec3 B = cross(Nw, T);
@@ -186,26 +190,52 @@ function mbox(w, h, d, t = 2) {
 // sandbags piled on the cheeks, rubble and tufts. The MG fires over the parapet; the sky stays open for AA.
 function buildParapet(A, G, P, add, quality) {
   const con = pbr(A, 'worn-concrete'); con.color = new THREE.Color(0.78, 0.76, 0.72);
-  const top = P.h + 1.62 - 0.8; const grp = new THREE.Group(); grp.position.set(P.x, 0, P.z);
-  const mk = (geo, x, y, z, rx = 0, ry = 0, rz = 0) => { const m = new THREE.Mesh(geo, con); m.position.set(x, y, z); m.rotation.set(rx, ry, rz); m.castShadow = m.receiveShadow = true; grp.add(m); return m; };
-  const base = P.h - 1.2, hw = 5.4;
-  mk(mbox(hw * 2, top - base, 1.1), 0, (top + base) / 2, -1.55);                    // front wall
-  mk(mbox(hw * 2, 0.3, 0.8), 0, top - 0.12, -2.0, -0.5);                         // chamfered outer lip
-  mk(mbox(hw * 2 + 0.2, 0.18, 0.5), 0, top + 0.07, -1.18);                          // inner coping
+  // low parapet: only a thin, battered band sits at the bottom of the gunner's view
+  const top = P.h + 1.62 - 1.02; const grp = new THREE.Group(); grp.position.set(P.x, 0, P.z);
+  const mk = (geo, x, y, z, rx = 0, ry = 0, rz = 0, mat = con) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.set(rx, ry, rz); m.castShadow = m.receiveShadow = true; grp.add(m); return m; };
+  const base = P.h - 1.2, hw = 5.4; const rnd = mulberry(77);
+  // front wall in cast sections, each shell-chipped to a slightly different height; one blown notch
+  const nSeg = 9, sw = hw * 2 / nSeg;
+  for (let i = 0; i < nSeg; i++) {
+    const x = -hw + sw * (i + 0.5); const notch = i === 6 ? 0.22 : 0; const t = top - rnd() * 0.07 - notch;
+    mk(mbox(sw - 0.015, t - base, 1.1), x, (t + base) / 2, -1.55, 0, 0, (rnd() - 0.5) * 0.012);
+    if (!notch) mk(mbox(sw - 0.015, 0.26, 0.62), x, t - 0.1, -2.02, -0.55 - rnd() * 0.12, 0, 0);   // chamfered lip, broken per section
+    // spalled chunks knocked out of the lip edge
+    for (let k = 0; k < 2; k++) mk(new THREE.DodecahedronGeometry(0.07 + rnd() * 0.08, 0), x + (rnd() - 0.5) * sw, t - 0.02, -2.15 - rnd() * 0.15, rnd() * 3, rnd() * 3, 0);
+  }
   for (const sx of [-1, 1]) {                                                         // cheek walls
-    const h2 = top + 0.55;
+    const h2 = top + 0.45;
     mk(mbox(1.0, h2 - base, 3.6), sx * (hw + 0.6), (h2 + base) / 2, -0.4, 0, sx * -0.38);
     mk(mbox(1.2, 0.3, 3.8), sx * (hw + 0.55), h2 + 0.05, -0.4, 0, sx * -0.38, sx * 0.12);
   }
-  // bullet-chipped embrasure step under the gun
-  
+  // blown sand / dirt drifted onto the parapet top
+  const mud = pbr(A, 'mud'); mud.color = new THREE.Color(1.15, 1.0, 0.8); mud.roughness = 1;
+  const dg = new THREE.SphereGeometry(1, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+  for (const [x, z, sx, sz, sy] of [[-4.2, -1.75, 1.3, 0.55, 0.16], [-1.6, -1.9, 0.7, 0.35, 0.09], [2.2, -1.8, 1.0, 0.45, 0.12], [4.6, -1.7, 0.9, 0.5, 0.2], [0.9, -2.25, 0.8, 0.3, 0.07]]) {
+    const m = mk(dg, x, top - 0.03, z, 0, rnd() * 3, 0, mud); m.scale.set(sx, sy, sz);
+  }
+  // spent brass and links piled on the parapet top and the pit floor
+  const brass = new THREE.MeshStandardMaterial({ color: 0xb08a48, metalness: 0.85, roughness: 0.32 });
+  const cg = new THREE.CylinderGeometry(0.0075, 0.0075, 0.1, 6); cg.rotateZ(Math.PI / 2);
+  const NC = quality === 'low' ? 90 : 220; const cas = new THREE.InstancedMesh(cg, brass, NC); const mm = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler();
+  for (let i = 0; i < NC; i++) {
+    const onTop = i < NC * 0.6; const x = (rnd() - 0.5) * (onTop ? 6.5 : 4) * (onTop ? 1 : rnd()); const z = onTop ? -1.6 - rnd() * 0.42 : -0.6 + rnd() * 2.2;
+    const y = onTop ? top - 0.07 * 0 + 0.008 : P.h + 0.01;
+    q.setFromEuler(e.set(0, rnd() * 6.28, 0)); mm.compose(new THREE.Vector3(x, y, z), q, new THREE.Vector3(1, 1, 1)); cas.setMatrixAt(i, mm);
+  }
+  cas.castShadow = true; grp.add(cas);
+  // ammo cans + a wooden crate on the lip, within reach of the gun
+  if (G.ammo) for (const [x, z, r] of [[-2.9, -1.75, 0.25], [-2.35, -1.8, -0.1], [3.1, -1.7, 1.4]]) { const o = shadowAll(G.ammo.scene.clone()); o.position.set(x, top, z); o.rotation.y = r; o.scale.setScalar(1.2); grp.add(o); }
+  const wood = pbr(A, 'worn-concrete'); wood.color = new THREE.Color(0.42, 0.33, 0.22); wood.roughness = 0.9;
+  mk(mbox(0.7, 0.32, 0.42, 0.5), 4.1, top + 0.16, -1.85, 0, 0.3, 0, wood);
   add(grp);
   const sb = G.sb_wall || G.sb_set;
-  if (sb) for (const [x, z, r, sc, y] of [[-hw - 0.5, 0.4, -0.38, 1.0, 1.0], [hw + 0.5, 0.4, 0.38 + Math.PI, 1.0, 1.0], [-hw - 1.2, -2.6, 0.2, 0.9, 0.2], [hw + 1.3, -2.7, -0.2, 0.9, 0.2]]) {
-    const o = shadowAll(sb.scene.clone()); o.position.set(P.x + x, (y > 0.5 ? top + 1.2 : heightAt(P.x + x, P.z + z)), P.z + z); o.rotation.y = r; o.scale.setScalar(sc); add(o);
+  if (sb) for (const [x, z, r, sc, y] of [[-hw - 0.5, 0.4, -0.38, 1.0, 1.0], [hw + 0.5, 0.4, 0.38 + Math.PI, 1.0, 1.0], [-hw - 1.2, -2.6, 0.2, 0.9, 0.2], [hw + 1.3, -2.7, -0.2, 0.9, 0.2], [-hw + 1.0, -1.75, 0.04, 0.55, 2], [hw - 1.0, -1.8, -0.05, 0.55, 2]]) {
+    const o = shadowAll(sb.scene.clone()); o.position.set(P.x + x, (y > 1.5 ? top - 0.02 : y > 0.5 ? top + 1.0 : heightAt(P.x + x, P.z + z)), P.z + z); o.rotation.y = r; o.scale.setScalar(sc); add(o);
   }
   if (G.sb_corner) for (const sx of [-1, 1]) { const o = shadowAll(G.sb_corner.scene.clone()); o.position.set(P.x + sx * 6.6, heightAt(P.x + sx * 6.6, P.z + 1.5) - 0.1, P.z + 1.5); o.rotation.y = sx > 0 ? Math.PI : -Math.PI / 2; add(o); }
   if (G.rubble) { const ms = [place(P.x - 3.2, P.z - 3.6, 0.6, 0.55, -0.15), place(P.x + 2.6, P.z - 4.0, 2.2, 0.45, -0.15)]; add(instanceModel(G.rubble, ms)); }
+  return top;
 }
 // Scrubby dune vegetation: sedge, oat grass, dead thornbush and clumps scattered on the dune/backshore.
 function buildTufts(G, add, quality, rnd) {
@@ -230,7 +260,7 @@ export function buildWorld(A, scene, quality, horizon) {
   const add = (o) => { scene.add(o); return o; };
   // --- player emplacement ---
   const P = PLAYER;
-  buildParapet(A, G, P, add, quality);
+  W.parapetTop = buildParapet(A, G, P, add, quality);
   if (G.camonet) { const o = shadowAll(G.camonet.scene.clone(), true, true); placeObj(o, P.x + 0.5, P.z + 4.2, 0.1, 1.15, -0.1); add(o); }
   if (G.ammo) { const ms = []; for (const [dx, dz, r] of [[1.6, 1.6, 0.3], [1.95, 1.4, 0.1], [1.75, 1.9, 1.7], [-1.7, 1.8, -0.4], [-1.5, 2.2, 2.0]]) ms.push(place(P.x + dx, P.z + dz, r, 1.2)); add(instanceModel(G.ammo, ms)); }
   if (G.howitzer) { const o = militarize(shadowAll(G.howitzer.scene.clone()), 0x6e7354); placeObj(o, P.x + 10.5, P.z + 3.5, Math.PI + 0.06, 1, 0); add(o); W.howitzer = o; o.traverse((c) => { if (c.name === 'barrel') W.howBarrel = c; }); }

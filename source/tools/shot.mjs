@@ -103,6 +103,22 @@ const scripts = {
     await T(() => __T.flush());
     for (const [i, w] of [[1, 0.5], [2, 2.6], [3, 2.4], [4, 2.0]]) { await T((n) => __T.step(n), w); await sleep(900); await shot('intro' + i); }
   },
+  async pass2() {
+    await T(() => { __T.start(1); __T.god(); __T.flush(); });
+    await T(() => { for (const e of __T.enemies.list) if (e.type === 'lcvp' || e.type === 'rib') e.z = Math.max(e.z, -150); });
+    await T((n) => __T.step(n), +(process.env.STEP || 26)); await T(() => __T.aim(0.03, -0.1)); await sleep(2500); await shot('p_view');
+    console.log(JSON.stringify(await T(() => __T.enemies.list.filter(e => e.type === 'soldier').map(e => [e.state, e.pose || '-', Math.round(e.obj.position.z)]))));
+    await T(() => { __T.gun(false); const ss = __T.enemies.list.filter(e => e.type === 'soldier' && e.alive && e.state !== 'boat'); ss.forEach((s, i) => { s.state = 'cover'; s.hold = 99; s.crawl = i % 2 === 0; s.obj.position.set(-6 + (i % 6) * 2.4, 0, -40 - Math.floor(i / 6) * 2.5); }); });
+    await T(() => __T.step(1.5)); await T(() => { __T.cam(1, 4.0, -26); __T.aim(0, -0.22); }); await sleep(1500); await shot('p_pose');
+    await T(() => { __T.cam(-20, 14, -10); __T.aim(0, -0.42); }); await sleep(1500); await shot('p_sand');
+    await T(() => { __T.cam(0, 3, -60); __T.aim(Math.PI * 0.0 + 0.0, -0.05); }); await sleep(1500); await shot('p_sea');
+  },
+  async pose() {
+    await T(() => { __T.start(1); __T.god(); __T.gun(false); __T.endWave(); __T.spawn('lcvp', 0); __T.spawn('lcvp', 12); for (const e of __T.enemies.list) if (e.type === 'lcvp') e.z = -150; });
+    await T(() => __T.step(12));
+    await T(() => { const ss = __T.enemies.list.filter(e => e.type === 'soldier' && e.alive && e.state !== 'boat'); ss.forEach((s, i) => { s.state = i % 3 === 2 ? 'advance' : 'cover'; s.hold = 99; s.crawl = i % 3 === 0; s.goal.set(s.obj.position.x, 0, -20); s.obj.position.set(-5 + (i % 5) * 2.5, 0, -36 - Math.floor(i / 5) * 3); }); });
+    await T(() => __T.step(1.2)); await T(() => { __T.cam(-3, 2.2, -54); __T.aim(Math.PI - 0.15, -0.08); }); await sleep(1500); await shot('pose');
+  },
   async top() {
     await T(() => { __T.start(1); __T.god(); __T.gun(false); __T.endWave(); __T.cam(0, 50, -80); __T.aim(0, -1.0); }); await sleep(2000); await shot('top');
   },

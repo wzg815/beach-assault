@@ -119,12 +119,12 @@ class Decals {
     this.mesh = new THREE.InstancedMesh(g, m, max); this.mesh.count = 0; this.mesh.receiveShadow = true; this.mesh.frustumCulled = false; this.mesh.renderOrder = 1;
     this.fades = new Float32Array(max); this.born = new Float32Array(max); this.t = 0; this.life = o.life || 0;
   }
-  add(x, z, size, rot = Math.random() * 6.28, alpha = 1, y) {
+  add(x, z, size, rot = Math.random() * 6.28, alpha = 1, y, sizeZ = size, variant) {
     const i = this.i % this.max; this.i++;
     const h = (y ?? heightAt(x, z)) + 0.03; normalAt(x, z, _n);
     const q = new THREE.Quaternion().setFromUnitVectors(_up, _n).multiply(new THREE.Quaternion().setFromAxisAngle(_up, rot));
-    this.mesh.setMatrixAt(i, new THREE.Matrix4().compose(_a.set(x, h, z), q, _b.set(size, 1, size)));
-    this.aF.setXY(i, Math.floor(Math.random() * this.v), alpha); this.aF.needsUpdate = true; this.mesh.instanceMatrix.needsUpdate = true;
+    this.mesh.setMatrixAt(i, new THREE.Matrix4().compose(_a.set(x, h, z), q, _b.set(size, 1, sizeZ)));
+    this.aF.setXY(i, variant ?? Math.floor(Math.random() * this.v), alpha); this.aF.needsUpdate = true; this.mesh.instanceMatrix.needsUpdate = true;
     this.mesh.count = Math.min(this.max, this.i); this.born[i] = this.t; this.fades[i] = alpha;
   }
   update(dt) {
@@ -150,7 +150,8 @@ export class FX {
     this.craters = new Decals(T.fx_crater, 2, lo ? 40 : 90, { life: 0 });
     this.bloodD = new Decals(T.fx_blood_decal, 4, lo ? 40 : 90, { rough: 0.55, life: 0 });
     for (const s of [this.exp, this.smoke, this.spl, this.bsp, this.flash, this.glow]) scene.add(s.mesh);
-    scene.add(this.streak.mesh, this.craters.mesh, this.bloodD.mesh);
+    this.prints = new Decals(printsTex(), 2, lo ? 300 : 900, { life: 0 });
+    scene.add(this.streak.mesh, this.craters.mesh, this.bloodD.mesh, this.prints.mesh);
     // debris chunks
     const dg = new THREE.DodecahedronGeometry(0.22, 0); this.debMax = lo ? 80 : 180;
     this.deb = new THREE.InstancedMesh(dg, new THREE.MeshStandardMaterial({ color: 0x4b4136, roughness: 0.95 }), this.debMax); this.deb.count = 0; this.deb.castShadow = !lo; this.deb.frustumCulled = false; scene.add(this.deb);
@@ -217,6 +218,14 @@ export class FX {
   impact(p, kind, dir) {
     if (kind === 'water') return this.splash(p, rr(0.45, 0.7));
     if (kind === 'metal') { for (let i = 0; i < 5; i++) this.streak.spawn({ p, v: _b.set(rr(-1, 1), rr(0, 1.2), rr(-1, 1)).normalize().multiplyScalar(rr(8, 20)), len: 0.5, w: 0.06, life: rr(0.2, 0.45), c: _spark, grav: 9.8 }); this.flash.spawn({ p, s0: 0.9, s1: 1.4, life: 0.06, f0: Math.random() * 4 | 0, em: 1, c: _spark }); this.smoke.spawn({ p, s0: 0.5, s1: 1.6, life: 0.8, a: 0.35, c: _smokeC, f0: Math.random() * 16 | 0 }); return; }
+    if (kind === 'concrete') {
+      for (let i = 0; i < 4; i++) this.streak.spawn({ p, v: _b.set(rr(-1, 1), rr(0.2, 1.4), rr(-0.2, 1)).normalize().multiplyScalar(rr(5, 14)), len: 0.25, w: 0.03, life: rr(0.12, 0.3), c: _spark, grav: 9.8 });
+      this.flash.spawn({ p, s0: 0.25, s1: 0.45, life: 0.05, f0: Math.random() * 4 | 0, em: 1, c: _spark });
+      this.smoke.spawn({ p: _a.copy(p), s0: 0.15, s1: rr(0.7, 1.1), life: rr(0.5, 0.9), a: 0.7, c: _concD, f0: Math.random() * 16 | 0, v: _b.set(rr(-0.4, 0.4), rr(0.8, 1.6), rr(0.2, 1.2)), drag: 3 });
+      this.smoke.spawn({ p: _a.copy(p), s0: 0.3, s1: rr(1.2, 1.8), life: rr(1.2, 2), a: 0.25, c: _dust, f0: Math.random() * 16 | 0, v: _b.set(0, 0.4, 0.3), drag: 1 });
+      if (this.debris.length < this.debMax - 4) for (let i = 0; i < 2; i++) this.debris.push({ p: p.clone(), v: new THREE.Vector3(rr(-1.5, 1.5), rr(1.5, 3.5), rr(0, 2.5)), r: new THREE.Vector3(rr(0, 6), rr(0, 6), 0), w: new THREE.Vector3(rr(-9, 9), rr(-9, 9), 0), s: rr(0.1, 0.2), age: 0, life: 2 });
+      return;
+    }
     if (kind === 'sand') {
       this.smoke.spawn({ p: _a.copy(p).setY(p.y + 0.15), s0: 0.3, s1: rr(1.0, 1.4), life: rr(0.3, 0.45), a: 0.75, c: _sandSpray, f0: Math.random() * 16 | 0, v: _b.set(rr(-0.5, 0.5), rr(1.2, 2.2), rr(-0.5, 0.5)), drag: 3 });
       this.smoke.spawn({ p: _a.copy(p).setY(p.y + 0.2), s0: 0.5, s1: rr(1.6, 2.4), life: rr(1, 1.6), a: 0.3, c: _dust, f0: Math.random() * 16 | 0, v: _b.set(rr(-0.3, 0.3), 0.4, rr(-0.3, 0.3)), drag: 1 });
@@ -242,7 +251,25 @@ export class FX {
   wake(p, s = 1) { this.smoke.spawn({ p: _a.copy(p).setY(p.y + 0.1), s0: 0.8 * s, s1: rr(2.5, 4) * s, life: rr(1.2, 2), a: 0.55, c: _foam, f0: Math.random() * 16 | 0, v: _b.set(rr(-0.6, 0.6), 0.3, rr(-0.6, 0.6)), drag: 1 }); }
   dust(p, s = 1) { this.smoke.spawn({ p, s0: 0.8 * s, s1: rr(3, 5) * s, life: rr(1.5, 2.5), a: 0.4, c: _dust, f0: Math.random() * 16 | 0, v: _b.set(rr(-0.5, 0.5), 0.5, rr(-0.5, 0.5)), drag: 1 }); }
   glowAt(p, s, life, c = _hot, em = 1) { this.glow.spawn({ p, s0: s, s1: s, life, c, em, fin: 0.02 }); }
-  clear() { for (const s of [this.exp, this.smoke, this.spl, this.bsp, this.flash, this.glow, this.streak]) { s.free.push(...s.list); s.list.length = 0; s.update?.(0); } this.debris.length = 0; this.craters.clear(); this.bloodD.clear(); }
+  // earlier waves have already chewed up the beach: shell craters, tank tracks and boot trails
+  seedBeach() {
+    for (let i = 0; i < 26; i++) { const x = rr(-120, 120), z = rr(-64, -20); if (Math.abs(x) < 8 && z > -30) continue; this.craters.add(x, z, rr(3, 7), undefined, rr(0.6, 0.95)); }
+    for (let k = 0; k < 4; k++) { let x = rr(-90, 90), z = -66; const dx = rr(-0.15, 0.15); for (; z < -24; z += 1.3) { x += dx * 1.3; for (const sx of [-1, 1]) this.prints.add(x + sx * 1.45, z, 0.75, Math.atan2(dx, 1), 0.55, undefined, 1.35, 1); } }
+    for (let k = 0; k < 14; k++) { let x = rr(-70, 70), z = rr(-64, -50), yaw = rr(-0.3, 0.3); for (let j = 0; j < 18 && z < -20; j++) { yaw += rr(-0.15, 0.15); x += Math.sin(yaw) * 1.5; z += Math.cos(yaw) * 1.5; this.prints.add(x, z, 0.55, yaw + Math.PI, 0.5, undefined, 0.55, 0); } }
+  }
+  clear() { this.prints.clear(); for (const s of [this.exp, this.smoke, this.spl, this.bsp, this.flash, this.glow, this.streak]) { s.free.push(...s.list); s.list.length = 0; s.update?.(0); } this.debris.length = 0; this.craters.clear(); this.bloodD.clear(); }
 }
 const _hot = new THREE.Color(1, 0.75, 0.45), _water = new THREE.Color(0.86, 0.9, 0.92), _mist = new THREE.Color(0.85, 0.88, 0.9), _smokeC = new THREE.Color(0.42, 0.4, 0.38), _dark = new THREE.Color(0.16, 0.15, 0.14), _dust = new THREE.Color(0.78, 0.68, 0.55), _sandSpray = new THREE.Color(0.72, 0.6, 0.45), _spark = new THREE.Color(1, 0.62, 0.25), _tracer = new THREE.Color(1, 0.45, 0.15), _bloodC = new THREE.Color(1.35, 0.32, 0.3), _foam = new THREE.Color(0.95, 0.97, 1);
-export const COLORS = { hot: _hot, spark: _spark, tracer: _tracer, smoke: _smokeC, dark: _dark, foam: _foam };
+const _concD = new THREE.Color(0.62, 0.6, 0.56), _tracerE = new THREE.Color(0.75, 1, 0.6);
+export const COLORS = { hot: _hot, spark: _spark, tracer: _tracer, tracerE: _tracerE, smoke: _smokeC, dark: _dark, foam: _foam };
+
+// boot prints (cell 0) and tank tread (cell 1), drawn once into a small canvas atlas
+function printsTex() {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 128; const x = c.getContext('2d');
+  x.fillStyle = 'rgba(52,40,28,0.0)'; x.fillRect(0, 0, 256, 128);
+  const boot = (cx, cy, r) => { x.save(); x.translate(cx, cy); x.rotate(r); x.fillStyle = 'rgba(48,38,27,0.55)'; x.beginPath(); x.ellipse(0, -9, 7, 13, 0, 0, 6.29); x.fill(); x.beginPath(); x.ellipse(0, 12, 6, 8, 0, 0, 6.29); x.fill(); x.restore(); };
+  boot(46, 34, 0.08); boot(82, 94, -0.06);
+  for (let y = 4; y < 128; y += 11) { x.fillStyle = 'rgba(44,34,24,0.6)'; x.fillRect(140, y, 104, 6); }
+  x.fillStyle = 'rgba(60,46,32,0.25)'; x.fillRect(136, 0, 112, 128);
+  const t = new THREE.CanvasTexture(c); return t;
+}

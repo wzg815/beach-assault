@@ -44,10 +44,10 @@ export class Enemies {
   makeSoldier(parent, local) {
     const G = this.G; const st = G.A.glb.soldier;
     const obj = st ? SkeletonUtils.clone(st.scene) : new THREE.Mesh(new THREE.CapsuleGeometry(0.25, 1.2), this.helmetMat);
-    let head = null, chest = null, armL = null, armR = null, foreL = null, foreR = null, spine = null;
-    obj.traverse((o) => { if (o.name === 'head') head = o; if (o.name === 'chest') chest = o; if (o.name === 'upperarm_L') armL = o; if (o.name === 'upperarm_R') armR = o; if (o.name === 'forearm_L') foreL = o; if (o.name === 'forearm_R') foreR = o; if (o.name === 'spine1') spine = o; });
+    const L = {}; let head = null, chest = null, armL = null, armR = null, foreL = null, foreR = null, spine = null;
+    obj.traverse((o) => { if (o.name === 'head') head = o; if (o.name === 'chest') chest = o; if (o.name === 'upperarm_L') armL = o; if (o.name === 'upperarm_R') armR = o; if (o.name === 'forearm_L') foreL = o; if (o.name === 'forearm_R') foreR = o; if (o.name === 'spine1') spine = o; if (o.name === 'thigh_L') L.thL = o; if (o.name === 'thigh_R') L.thR = o; if (o.name === 'calf_L') L.caL = o; if (o.name === 'calf_R') L.caR = o; if (o.name === 'hips') L.hips = o; });
     obj.scale.setScalar(rr(0.96, 1.05));
-    const s = { type: 'soldier', obj, alive: true, hp: 30, head, chest, armL, armR, foreL, foreR, spine, mixer: null, acts: {}, state: 'boat', t: 0, fireT: rr(1, 4), speed: rr(2.9, 3.6), goal: V(), vel: V(), yaw: Math.PI, bob: Math.random() * 10 };
+    const s = { type: 'soldier', obj, alive: true, hp: 30, head, chest, armL, armR, foreL, foreR, spine, mixer: null, acts: {}, state: 'boat', t: 0, fireT: rr(1, 4), speed: rr(2.9, 3.6), goal: V(), vel: V(), yaw: Math.PI, bob: Math.random() * 10, ...L };
     if (parent) { parent.add(obj); obj.position.copy(local); obj.rotation.y = 0; } else this.G.scene.add(obj);
     obj.updateMatrixWorld(true);
     if (head) {
@@ -86,6 +86,16 @@ export class Enemies {
     if (s.foreL) s.foreL.rotation.x += -1.1 * k;
     if (s.spine && s.state === 'advance') s.spine.rotation.x += 0.22;
   }
+  poseLegs(s, dt) {
+    // kneeling / crouched firing stance layered over the idle clip
+    const want = s.pose === 'crouch' ? 1 : 0; s.crK = (s.crK || 0) + (want - (s.crK || 0)) * Math.min(1, dt * 5); const k = s.crK;
+    if (k < 0.01 || !s.thL) return;
+    if (s.hipScale === undefined) s.hipScale = s.hips ? 1 / s.hips.parent.getWorldScale(_b).y : 1;
+    s.thR.rotation.x += -1.45 * k; s.caR.rotation.x += 1.55 * k;   // front knee up
+    s.thL.rotation.x += 0.15 * k; s.caL.rotation.x += 2.0 * k;     // rear knee on the sand
+    if (s.hips) s.hips.position.y -= 0.4 * k * (s.hipScale || 1);
+    if (s.spine) s.spine.rotation.x += 0.2 * k;
+  }
   disembark(s, worldPos, yaw) {
     const G = this.G; s.obj.removeFromParent(); G.scene.add(s.obj); s.obj.position.copy(worldPos); s.yaw = yaw; s.obj.rotation.set(0, yaw, 0);
     s.state = 'advance'; s.t = 0; this.pickGoal(s);
@@ -112,12 +122,19 @@ export class Enemies {
       else {
         _a.multiplyScalar(1 / d); const sp = s.speed * (inWater ? clamp(1 + h * 0.35, 0.35, 0.8) : 1) * (G.diffSpeed || 1);
         p.x += _a.x * sp * dt; p.z += _a.z * sp * dt; s.yaw = lerpAng(s.yaw, Math.atan2(_a.x, _a.z), Math.min(1, dt * 6));
-        this.playAct(s, 'walk', sp * 0.55);
+        // crawl the last stretch under the wire / near the dunes
+        if (s.crawl === undefined && p.z > -46 && !s.final) s.crawl = Math.random() < 0.3;
+        const crawl = s.crawl && p.z > -46 && p.z < -18;
+        s.pose = crawl ? 'crawl' : null;
+        if (crawl) { p.x -= _a.x * sp * dt * 0.7; p.z -= _a.z * sp * dt * 0.7; }
+        this.playAct(s, 'walk', crawl ? 0.5 : sp * 0.55);
         if (inWater && Math.random() < dt * 4) G.fx.wake(_b.set(p.x, 0, p.z), 0.5);
+        else if (!crawl && h > -0.15 && G.camDist(p) < 140) { s.stepD = (s.stepD || 0) + sp * dt; if (s.stepD > 1.5) { s.stepD = 0; G.fx.prints.add(p.x, p.z, 0.55, s.yaw + Math.PI, 0.85, undefined, 0.55, 0); } }
       }
     } else {
       // cover / assault: face the bunker and shoot
       const ty = Math.atan2(PLAYER.x - p.x, PLAYER.z - p.z); s.yaw = lerpAng(s.yaw, ty, Math.min(1, dt * 4)); this.playAct(s, 'idle', 1);
+      s.pose = s.state === 'cover' ? (s.crawl && p.z > -46 ? 'prone' : 'crouch') : null;
       s.hold -= dt; if (s.hold <= 0) { s.state = 'advance'; this.pickGoal(s); }
       s.fireT -= dt;
       if (s.fireT <= 0) {
@@ -127,20 +144,34 @@ export class Enemies {
     }
     // keep on the sand (wading soldiers sink to the water surface)
     const surf = inWater ? Math.max(h, h * 0.25 - 0.9) : h;
-    p.y = surf; s.obj.rotation.set(0, s.yaw, 0);
-    if (s.mixer && G.camDist(p) < 260) { s.mixer.update(dt); this.poseArms(s, s.state !== 'advance'); }
+    p.y = surf; const lie = s.pose === 'crawl' || s.pose === 'prone';
+    s.lieK = (s.lieK || 0) + ((lie ? 1 : 0) - (s.lieK || 0)) * Math.min(1, dt * 4);
+    s.obj.rotation.set(s.lieK * 1.42, s.yaw, 0, 'YXZ'); p.y += s.lieK * 0.16;
+    if (s.mixer && G.camDist(p) < 260) { s.mixer.update(dt); this.poseArms(s, s.state !== 'advance'); this.poseLegs(s, dt); }
+    // hit volumes follow the stance
+    const ck = s.crK || 0; s.spheres[0].o.y = 1.08 - ck * 0.38 - s.lieK * 0.8; s.spheres[1].o.y = 1.58 - ck * 0.5 - s.lieK * 1.3;
   }
   soldierShot(s) {
     const G = this.G; if (!s.muzzle) return; const from = s.muzzle.getWorldPosition(V());
     const tgt = AIM().add(_b.set(rr(-4, 4), rr(-1.8, 1.2), rr(-2.5, 1)));
-    G.fx.muzzle(from, null, 0.5, false); G.fx.tracer(from, tgt, 420, COLORS.tracer, 0.06);
+    G.fx.muzzle(from, null, 0.5, false);
+    if (Math.random() < 0.55) G.fx.tracer(from, _c.copy(tgt).sub(from).multiplyScalar(1.25).add(from), 420, Math.random() < 0.5 ? COLORS.tracerE ?? COLORS.tracer : COLORS.tracer, 0.07);
     const d = from.distanceTo(tgt); G.audio.rifle(d);
     const assault = s.state === 'assault';
     const hit = Math.random() < (assault ? 0.55 : 0.25) * (G.diffAcc || 1);
     setTimeout(() => {
       if (!G.running) return;
       if (hit) G.damageBase(assault ? 3.5 : 1.6, tgt, 'bullet');
-      else if (d < 200 && Math.random() < 0.5) { G.fx.impact(_c.set(tgt.x, heightAt(tgt.x, tgt.z) + 0.3, tgt.z).add(_b.set(0, 0, -2)), 'sand'); G.audio.whiz(); }
+      else if (d < 260) {
+        const r = Math.random();
+        if (r < 0.45) { // round smacks into the parapet lip in front of the gun
+          const top = G.world.parapetTop ?? (PLAYER.h + 0.6);
+          G.fx.impact(_c.set(PLAYER.x + rr(-3.4, 3.4), top - rr(0, 0.25), PLAYER.z - rr(2.0, 2.4)), 'concrete');
+          if (Math.random() < 0.6) G.audio.whiz();
+          G.shake?.(0.05);
+        } else if (r < 0.75) { G.audio.whiz(); } // near miss overhead
+        else G.fx.impact(_c.set(tgt.x + rr(-3, 3), 0, tgt.z - rr(4, 12)).setY(heightAt(_c.x, _c.z) + 0.1), 'sand');
+      }
     }, d / 420 * 1000);
   }
   killSoldier(s, src, dir, blast) {
@@ -247,6 +278,7 @@ export class Enemies {
       e.z += e.speed * dt * (h < -1 ? 0.8 : 1);
       if (e.z >= e.stopZ) { e.state = 'fight'; e.t = 0; }
       if (h < -0.5 && Math.random() < dt * 14) G.fx.wake(_a.set(e.x + rr(-2, 2), 0, e.z + rr(2.5, 4.5)), 1.1);
+      if (h > -0.3) { e.trD = (e.trD || 0) + e.speed * dt; if (e.trD > 1.3) { e.trD = 0; const w = e.type === 'tank' ? 1.45 : 1.25; for (const sx of [-1, 1]) G.fx.prints.add(e.x + sx * w, e.z - 2.5, 0.75, 0, 0.9, undefined, 1.35, 1); } }
       if (h > 0 && Math.random() < dt * 6) G.fx.dust(_a.set(e.x + rr(-1.8, 1.8), h + 0.4, e.z - 4), 1.0);
       if (e.type === 'ifv' && e.troops && e.z > -58 && h > 0.2) { // drop squad from the rear ramp
         if (e.ramp) e.ramp.rotation.x = -1.2;

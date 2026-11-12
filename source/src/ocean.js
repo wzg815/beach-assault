@@ -4,11 +4,11 @@ import { TB, heightAt } from './terrain.js';
 
 // Gerstner wave set (direction xz toward the shore is +z). Shared by GPU and CPU so boats ride the same swell.
 export const WAVES = [
-  { d: [0.12, 1], A: 0.55, L: 42, Q: 0.55 },
-  { d: [-0.38, 1], A: 0.36, L: 23, Q: 0.5 },
-  { d: [0.55, 0.85], A: 0.22, L: 13.5, Q: 0.45 },
-  { d: [-0.7, 0.6], A: 0.12, L: 7.7, Q: 0.4 },
-  { d: [0.25, 1], A: 0.07, L: 4.2, Q: 0.3 },
+  { d: [0.12, 1], A: 0.66, L: 42, Q: 0.55 },
+  { d: [-0.38, 1], A: 0.432, L: 23, Q: 0.5 },
+  { d: [0.55, 0.85], A: 0.264, L: 13.5, Q: 0.45 },
+  { d: [-0.7, 0.6], A: 0.144, L: 7.7, Q: 0.4 },
+  { d: [0.25, 1], A: 0.084, L: 4.2, Q: 0.3 },
 ];
 for (const w of WAVES) { const l = Math.hypot(w.d[0], w.d[1]); w.d = [w.d[0] / l, w.d[1] / l]; w.k = 2 * Math.PI / w.L; w.c = Math.sqrt(9.8 / w.k); }
 const att = (depth) => 0.18 + 0.82 * Math.min(1, Math.max(0, (depth - 0.3) / 9));
@@ -88,17 +88,18 @@ export function makeOcean(A, heightTex, sun, sunCol, fogCol, quality) {
         vec3 n2 = texture2D(nTex, vWP.xz * 0.093 + vec2(-time * 0.019, time * 0.029)).xyz * 2.0 - 1.0;
         vec3 n3 = texture2D(nTex, vWP.xz * 0.0061 + vec2(time * 0.003, -time * 0.004)).xyz * 2.0 - 1.0;
         float detail = 1.0 / (1.0 + dist * 0.0035);
-        vec3 N = normalize(vN + vec3(n1.x + n2.x * 0.7, 0.0, n1.y + n2.y * 0.7) * 0.32 * detail + vec3(n3.x, 0.0, n3.y) * 0.18);
+        vec3 N = normalize(vN + vec3(n1.x + n2.x * 0.7, 0.0, n1.y + n2.y * 0.7) * 0.44 * detail + vec3(n3.x, 0.0, n3.y) * 0.24);
         float ndv = max(dot(N, V), 0.0);
         float fres = 0.02 + 0.98 * pow(1.0 - ndv, 5.0);
         vec3 R = reflect(-V, N); R.y = abs(R.y) + 0.01;
-        vec3 refl = skyLookup(R);
+        vec3 refl = skyLookup(R) * 0.82;
         float sd = max(dot(R, sunDir), 0.0);
         vec3 spec = sunCol * (pow(sd, 1400.0) * 24.0 + pow(sd, 160.0) * 1.1 + pow(sd, 18.0) * 0.05);
-        vec3 deep = vec3(0.010, 0.030, 0.040), shallow = vec3(0.06, 0.11, 0.09);
+        vec3 deep = vec3(0.005, 0.016, 0.024), shallow = vec3(0.04, 0.085, 0.072);
         vec3 body = mix(shallow, deep, smoothstep(0.0, 12.0, dep));
-        float sss = pow(max(dot(V, -sunDir) * 0.5 + 0.5, 0.0), 3.0) * clamp(vCrest * 1.4, 0.0, 1.0);
-        body += vec3(0.03, 0.11, 0.09) * sss;
+        // light shining through the thin backs of the crests when looking toward the sun
+        float sss = pow(max(dot(V, -sunDir) * 0.5 + 0.5, 0.0), 2.5) * clamp(vCrest * 1.9 - 0.15, 0.0, 1.0) * smoothstep(0.6, 3.0, dep);
+        body += vec3(0.05, 0.21, 0.16) * sss * (0.6 + sunCol * 0.25);
         body *= fogCol * 3.2 + 0.15;
         vec3 col = mix(body, refl, fres) + spec;
         // foam: shoreline wash, surf lines and whitecaps
@@ -107,8 +108,9 @@ export function makeOcean(A, heightTex, sun, sunCol, fogCol, quality) {
         float fp = f1 * 0.6 + f2 * 0.5;
         float shore = 1.0 - smoothstep(0.0, 0.22, dep);
         float surf = pow(0.5 + 0.5 * sin(dep * 3.4 - time * 1.25 + f1 * 1.2), 9.0) * smoothstep(0.1, 0.4, dep) * (1.0 - smoothstep(0.6, 2.6, dep));
-        float caps = smoothstep(0.62, 0.95, vCrest) * smoothstep(3.0, 10.0, dep) * 0.7;
-        float foam = clamp((shore * 0.9 + surf * 0.75 + caps) * smoothstep(0.45, 1.05, fp + shore * 0.25), 0.0, 1.0);
+        surf += pow(0.5 + 0.5 * sin(dep * 1.25 - time * 0.9 + f1 * 0.8 + vWP.x * 0.01), 16.0) * smoothstep(1.2, 2.2, dep) * (1.0 - smoothstep(4.0, 7.5, dep)) * 0.9;
+        float caps = smoothstep(0.58, 0.92, vCrest) * smoothstep(3.0, 10.0, dep) * 0.8;
+        float foam = clamp((shore * 0.9 + surf * 0.95 + caps) * smoothstep(0.45, 1.05, fp + shore * 0.25), 0.0, 1.0);
         vec3 foamCol = fogCol * 3.6 + sunCol * 0.18;
         col = mix(col, foamCol, foam * 0.8);
         float alpha = mix(0.35, 1.0, smoothstep(0.0, 1.4, dep));

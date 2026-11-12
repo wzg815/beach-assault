@@ -153,7 +153,7 @@ function startWave(n) {
 }
 function message(t, sub) { const m = $('msg'); m.innerHTML = t + (sub ? `<small>${sub}</small>` : ''); m.style.opacity = 1; clearTimeout(G._mt); G._mt = setTimeout(() => (m.style.opacity = 0), 2800); }
 function newGame() {
-  enemies.clear(); weapons.clear(); fx.clear();
+  enemies.clear(); weapons.clear(); fx.clear(); fx.seedBeach();
   const D = DIFF[diff]; Object.assign(S, { score: 0, hp: D.hp, hpMax: D.hp, combo: 1, comboT: 0, kills: {}, totalKills: 0, warned: false });
   weapons.shots = 0; weapons.hits = 0; G.diffAcc = D.acc; G.diffSpeed = D.spd; G.diffRof = D.rof; G.diffDmg = 1;
   yaw = 0; pitch = -0.12; G.running = true; G.state = 'play';
